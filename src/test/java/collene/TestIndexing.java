@@ -42,8 +42,18 @@ public class TestIndexing {
         Object[] fsDirectory = new Object[]{ FSDirectory.open(fsIndexDir) };
         list.add(fsDirectory);
         
-        Object[] memColDirectory = new Object[] { ColDirectory.open(new MemoryIO(256), new MemoryIO(256), new MemoryIO(256)) };
+        Object[] memColDirectory = new Object[] { ColDirectory.open(
+                new MemoryIO(256), 
+                new MemoryIO(256), 
+                new MemoryIO(256)) };
         list.add(memColDirectory);
+        
+        Object[] cassColDirectory = new Object[] { ColDirectory.open(
+                new CassandraIO(256, "collene", "cindex").start("127.0.0.1:9042"),
+                new MemoryIO(256),
+                new MemoryIO(256))
+        };
+        list.add(cassColDirectory);
         
         return list;
     }
@@ -78,8 +88,11 @@ public class TestIndexing {
             writer.addDocuments(documents);
             
             writer.commit();
+            System.out.println("comitted " + i);
             writer.forceMerge(1);
+            System.out.println("merged " + i);
             writer.forceMergeDeletes(true);
+            System.out.println("merged deletes " + i);
         }
         
         // now read it back.
