@@ -10,7 +10,7 @@ I've included a `MemoryIO` implementation in testing (it works), and a `Cassandr
 
 ## It Sucks
 
-Lucene does a lot of tiny one-byte writes. This mean performance will be bad because chances are that you need to
+Lucene does a lot of tiny one-byte writes. This means performance will be poor because chances are that you need to
 first read a column before you apply the update.
 
-The good news is that there is a ton of low hanging performance fruit
+The good news is that there is a ton of low hanging performance fruit. Go for it.
