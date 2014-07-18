@@ -65,6 +65,8 @@ public class CassandraIO implements IO {
     }
     
     public void close() {
+        ensureSession();
+        session.close();
         cluster.close();
         session = null;
     }
@@ -76,7 +78,6 @@ public class CassandraIO implements IO {
         PreparedStatement stmt = session.prepare(String.format("insert into %s.%s (key, name, value) values(?, ?, ?);", keyspace, index));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
         session.execute(bndStmt.bind(key, col, ByteBuffer.wrap(value)));
-        session.close();
     }
 
     @Override
@@ -87,13 +88,11 @@ public class CassandraIO implements IO {
         ResultSet rs = session.execute(bndStmt.bind(key, col));
         Row row = rs.one();
         if (row == null) {
-            session.close();
             return null;
         }
         ByteBuffer bb = row.getBytes("value");
         byte[] b = new byte[bb.remaining()];
         bb.get(b);
-        session.close();
         return b;
     }
 
@@ -114,7 +113,6 @@ public class CassandraIO implements IO {
         PreparedStatement stmt = session.prepare(String.format("delete from %s.%s where key = ?", keyspace, index));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
         session.execute(bndStmt.bind(key));
-        session.close();
     }
 
     @Override

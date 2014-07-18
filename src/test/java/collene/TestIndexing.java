@@ -40,13 +40,13 @@ public class TestIndexing {
         
         System.out.println("Using test dir " + fsIndexDir.getAbsolutePath());
         Object[] fsDirectory = new Object[]{ FSDirectory.open(fsIndexDir) };
-        list.add(fsDirectory);
+        //list.add(fsDirectory);
         
         Object[] memColDirectory = new Object[] { ColDirectory.open(
                 new MemoryIO(256), 
                 new MemoryIO(256), 
                 new MemoryIO(256)) };
-        list.add(memColDirectory);
+        //list.add(memColDirectory);
         
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
                 new CassandraIO(256, "collene", "cindex").start("127.0.0.1:9042"),
@@ -77,7 +77,7 @@ public class TestIndexing {
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
         IndexWriter writer = new IndexWriter(directory, config);
         
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 20; i++) {
             Collection<Document> documents = new ArrayList<Document>();
             Document doc = new Document();
             doc.add(new Field("key", "aaa_" + i, TextField.TYPE_STORED));
@@ -99,7 +99,7 @@ public class TestIndexing {
         IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(writer, false));
         QueryParser parser = new QueryParser(Version.LUCENE_4_9, "key", analyzer);
         
-        Query query = parser.parse("aaa_23");
+        Query query = parser.parse("aaa_4");
         TopDocs docs = searcher.search(query, 1);
         Assert.assertTrue(docs.totalHits > 0);
         
