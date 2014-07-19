@@ -45,13 +45,6 @@ public class RowIndexOutput extends IndexOutput {
         io.append(pointer, b, offset, length);
         pointer += length;
     }
-    
-    // todo: you really don't want this method anywhere.
-    private static byte[] copyFor(byte[] b, int offset, int length) {
-        byte[] newb = new byte[length];
-        System.arraycopy(b, offset, newb, 0, length);
-        return newb;
-    }
 
     @Override
     public void flush() throws IOException {

@@ -26,7 +26,6 @@ public class IoLockFactory extends LockFactory {
         makeLock(lockName).close();
     }
     
-    // todo: needs to use IO.
     private class IoLock extends Lock {
         private String fullName;
         
