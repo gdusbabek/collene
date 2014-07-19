@@ -40,7 +40,7 @@ public class TestIndexing {
         
         System.out.println("Using test dir " + fsIndexDir.getAbsolutePath());
         Object[] fsDirectory = new Object[]{ FSDirectory.open(fsIndexDir) };
-//        list.add(fsDirectory);
+        list.add(fsDirectory);
         
         Object[] memColDirectory = new Object[] { ColDirectory.open(
                 new MemoryIO(256), 
