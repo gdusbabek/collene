@@ -9,7 +9,7 @@ public class TestUtil {
             
     public static File getRandomTempDir() {
         String path = System.getProperty("java.io.tmpdir");
-        String rand = "__kalog_test_" + new BigInteger(128, random).toString(16);
+        String rand = "__collene_test_" + new BigInteger(128, random).toString(16);
         File f = new File(new File(path), rand);
         if (!f.mkdirs())
             throw new RuntimeException("Could not make temp dir");
