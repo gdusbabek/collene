@@ -18,8 +18,7 @@ public class RowIndexOutput extends IndexOutput {
 
     @Override
     public void close() throws IOException {
-        // no-op.
-        //System.out.println("Closing " + io.toString());
+        flush();
     }
 
     @Override
@@ -48,6 +47,6 @@ public class RowIndexOutput extends IndexOutput {
 
     @Override
     public void flush() throws IOException {
-        // no-op.
+        io.flush();
     }
 }

@@ -5,13 +5,17 @@ import java.io.IOException;
 
 public class RowWriter {
     private final String key;
-    private final IO io;
+    private final CachingCompositeIO io;
     private final RowMeta meta;
     
     public RowWriter(String key, IO io, IO metaIo) {
         this.key = key;
-        this.io = io;
+        this.io = new CachingCompositeIO(io);
         this.meta = new RowMeta(key, metaIo);
+    }
+    
+    public void flush() throws IOException {
+        io.flush();
     }
     
     public void append(long pointer, byte[] buf, int bufOffset, int length) throws IOException {
