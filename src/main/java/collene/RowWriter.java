@@ -15,7 +15,8 @@ public class RowWriter {
     }
     
     public void flush() throws IOException {
-        io.flush();
+        // since files are never modified, we can remove them from the cache.
+        io.flush(true);
     }
     
     public void append(long pointer, byte[] buf, int bufOffset, int length) throws IOException {
