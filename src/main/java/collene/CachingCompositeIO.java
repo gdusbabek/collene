@@ -88,12 +88,15 @@ public class CachingCompositeIO implements IO {
         }
     }
     
-    public void flush() throws IOException {
+    public void flush(boolean emptyCache) throws IOException {
         for (String key : needsFlush.keySet()) {
             for (long col : needsFlush.get(key)) {
                 io.put(key, col, cache.get(key, col));
             }
         }
         needsFlush.clear();
+        if (emptyCache) {
+            cache.clear();
+        }
     }
 }
