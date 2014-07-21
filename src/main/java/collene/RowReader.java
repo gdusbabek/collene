@@ -12,7 +12,7 @@ public class RowReader {
     public RowReader(String key, IO io, IO metaIo) {
         this.key = key;
         this.io = new CachingCompositeIO(io);
-        this.meta = new RowMeta(key, metaIo);
+        this.meta = new RowMeta(metaIo);
     }
     
     public byte getByte(long pointer) throws IOException {

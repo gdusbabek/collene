@@ -40,7 +40,7 @@ public class RowIndexInput extends IndexInput {
     @Override
     public long length() {
         try {
-            return io.meta().length();
+            return io.meta().getLength(key);
         } catch (IOException ex) {
             throw new IOError(ex);
         }

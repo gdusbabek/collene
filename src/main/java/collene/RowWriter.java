@@ -11,12 +11,13 @@ public class RowWriter {
     public RowWriter(String key, IO io, IO metaIo) {
         this.key = key;
         this.io = new CachingCompositeIO(io);
-        this.meta = new RowMeta(key, metaIo);
+        this.meta = new RowMeta(metaIo);
     }
     
     public void flush() throws IOException {
         // since files are never modified, we can remove them from the cache.
         io.flush(true);
+        this.meta.flush(true);
     }
     
     public void append(long pointer, byte[] buf, int bufOffset, int length) throws IOException {
@@ -56,7 +57,7 @@ public class RowWriter {
             io.put(key, (int)((pointer + length - 1) / io.getColSize()), colValue);
         }
         
-        meta.setLength(pointer + length);
+        meta.setLength(key, pointer + length, false);
     }
     
     private static String bytesToString(byte[] buf, int offset, int len) {
@@ -78,7 +79,7 @@ public class RowWriter {
     
     public String toString() {
         try {
-            return String.format("%s %d bytes", key, meta.length());
+            return String.format("%s %d bytes", key, meta.getLength(key));
         } catch (IOException ex) {
             throw new IOError(ex);
         }

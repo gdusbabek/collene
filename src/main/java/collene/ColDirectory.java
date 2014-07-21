@@ -14,9 +14,11 @@ public class ColDirectory extends Directory {
     private LockFactory lockFactory;
     private IO indexIO;
     private IO metaIO;
+    private RowMeta meta;
     
     private ColDirectory(IO indexIO, IO metaIO, LockFactory lockFactory) {
         this.indexIO = indexIO;
+        this.meta = new RowMeta(metaIO);
         this.metaIO = metaIO;
         this.lockFactory = lockFactory;
     }
@@ -41,7 +43,7 @@ public class ColDirectory extends Directory {
 
     @Override
     public long fileLength(String name) throws IOException {
-        return new RowMeta(name, metaIO).length();
+        return meta.getLength(name);
     }
 
     @Override

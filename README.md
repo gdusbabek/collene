@@ -31,22 +31,25 @@ The good news is that there is a ton of low hanging performance fruit. Go for it
 ## Bugs That I Know About
 
 1. Exception when trying to run the tests twice in a row. Should be easy fix; I just haven't done it.
-1. Can't run the cassandra test right after the memory test. IndexWriter complains about not being able to acquire a
-   lock. This is troubling because it means there is some shared state that I'm not aware of.
+1. <strike>Can't run the cassandra test right after the memory test. IndexWriter complains about not being able to acquire a
+   lock. This is troubling because it means there is some shared state that I'm not aware of.</strike>
+1. <strike>Setting the file length on a metadata instance will quickly become a bottleneck. The lengths can be kept and updated
+   in memory until the file is flushed, at which time the metadata can be written. This is currently happening whenever
+   a batch of documents are added to the index. No file length reads are happening, so there the right course will be
+   to update in memory, then flush when the IndexWriter is committed.</strike>
 
 ## So Then...
 
 ### Things that need to be verified or implemented and then verified
 
-1. Point a reader at an existing database and do a query.
-1. Verify that locks are removed when a writer is closed.
-1. Look at a way to implement `Directory.listFiles()`, probably using a long row. (Let's face it, if this grows to
+1. Point a reader at an existing database and do a query. (fails because writing never relinquishes the lock?)
+1. Verify that locks are removed when a writer is closed. (sensing a pattern here?)
+1. Look at a way to implement `Directory.listAll()`, probably using a long row. (Let's face it, if this grows to
    millions of entries, you have other problems.)
 1. Document retrieval.
 
 ### Questions that might help me figure a few things out.
 
-1. How often and in what contexts is `Directory.listFiles()` used (just when opening a reader? who knows?)
 1. When does a doc get its id. Could I store that in some other place to have quicker document retrieval?
 
 ### Things I haven't thought too deeply about, but may be a problem.

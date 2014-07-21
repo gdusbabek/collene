@@ -29,12 +29,40 @@ public class Freedb {
     private static final boolean VERBOSE = true;
     private static PrintStream out = System.out;
     
-    public static void main(String[] args) throws Exception {
+    public static void main(String args[]) throws Exception {
+        BuildIndex(args);
+        out.println("\nWill now do an independent search\n");
+        DoSearch(args);
+        System.exit(0);
+    }
+    
+    public static void DoSearch(String[] args) throws Exception {
+        Directory directory = ColDirectory.open(
+                new CassandraIO(8192, "collene", "cindex").start("127.0.0.1:9042"),
+                new CassandraIO(8192, "collene", "cmeta").start("127.0.0.1:9042"),
+                new CassandraIO(8192, "collene", "clock").start("127.0.0.1:9042")
+        );
+        IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(directory));
+        Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_4_9);
+        QueryParser parser = new QueryParser(Version.LUCENE_4_9, "any", analyzer);
+        long searchStart = System.currentTimeMillis();
+//            Query query = parser.parse("morrissey");
+        Query query = parser.parse("Dance");
+        TopDocs docs = searcher.search(query, 10);
+        long searchEnd = System.currentTimeMillis();
+        out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
+        for (ScoreDoc d : docs.scoreDocs) {
+            out.println(String.format("%d %.2f %d", d.doc, d.score, d.shardIndex));
+        }
+        directory.close();
+    }
+    
+    public static void BuildIndex(String[] args) throws Exception {
         String freedbPath = "/Users/gdusbabek/Downloads/freedb-complete-20140701.tar.bz2";
         Directory directory = ColDirectory.open(
                 new CassandraIO(8192, "collene", "cindex").start("127.0.0.1:9042"),
-                new MemoryIO(8192),
-                new MemoryIO(8192)
+                new CassandraIO(8192, "collene", "cmeta").start("127.0.0.1:9042"),
+                new CassandraIO(8192, "collene", "clock").start("127.0.0.1:9042")
         );
 
         FreeDbReader reader = new FreeDbReader(new File(freedbPath), 50000);
@@ -105,7 +133,8 @@ public class Freedb {
             IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(writer, false));
             QueryParser parser = new QueryParser(Version.LUCENE_4_9, "any", analyzer);
             long searchStart = System.currentTimeMillis();
-            Query query = parser.parse("morrissey");
+//            Query query = parser.parse("morrissey");
+            Query query = parser.parse("Dance");
             TopDocs docs = searcher.search(query, 10);
             long searchEnd = System.currentTimeMillis();
             out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
@@ -126,6 +155,5 @@ public class Freedb {
         }
         
         writer.close();
-        System.exit(0);
     }
 }
