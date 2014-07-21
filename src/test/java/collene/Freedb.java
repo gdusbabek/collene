@@ -16,6 +16,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.Version;
 
 import java.io.File;
@@ -30,7 +31,12 @@ public class Freedb {
     private static PrintStream out = System.out;
     
     public static void main(String args[]) throws Exception {
-        BuildIndex(args);
+        try {
+            BuildIndex(args);
+        } catch (LockObtainFailedException ex) {
+            ex.printStackTrace(out);
+            System.exit(-1);
+        }
         out.println("\nWill now do an independent search\n");
         DoSearch(args);
         System.exit(0);
@@ -154,6 +160,7 @@ public class Freedb {
             out.println(s);
         }
         
-        writer.close();
+        writer.close(true);
+        //directory.clearLock(IndexWriter.WRITE_LOCK_NAME);
     }
 }

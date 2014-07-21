@@ -51,12 +51,17 @@ public class IoLockFactory extends LockFactory {
 
         @Override
         public void close() throws IOException {
-            io.put(fullName, LOCK_COL, UNLOCKED);
+            //io.put(fullName, LOCK_COL, UNLOCKED); // this should work, but doesn't.
+            io.delete(fullName);
         }
 
         @Override
         public boolean isLocked() throws IOException {
             return io.get(fullName, LOCK_COL)[0] == 1;
+        }
+        
+        public String toString() {
+            return "IOLock:" + fullName;
         }
     }
 }
