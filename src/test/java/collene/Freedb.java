@@ -19,10 +19,15 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Version;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 
 public class Freedb {
+    
+    private static final int MAX_ENTRIES = 10000;// Integer.MAX_VALUE;
+    private static final boolean VERBOSE = true;
+    private static PrintStream out = System.out;
     
     public static void main(String[] args) throws Exception {
         String freedbPath = "/Users/gdusbabek/Downloads/freedb-complete-20140701.tar.bz2";
@@ -45,7 +50,8 @@ public class Freedb {
         int count = 0;
         while (entry != null) {
             Document doc = new Document();
-            doc.add(new Field("any", entry.toString(), TextField.TYPE_STORED));
+            String any = entry.toString();
+            doc.add(new Field("any", any, TextField.TYPE_STORED));
             doc.add(new Field("artist", entry.getArtist(), TextField.TYPE_NOT_STORED));
             doc.add(new Field("album", entry.getAlbum(), TextField.TYPE_NOT_STORED));
             doc.add(new Field("title", entry.getTitle(), TextField.TYPE_NOT_STORED));
@@ -55,12 +61,15 @@ public class Freedb {
                 doc.add(new Field("track", entry.getTrack(i), TextField.TYPE_STORED));
             }
             documents.add(doc);
+            if (VERBOSE) {
+                out.println(any);
+            }
             
             if (documents.size() == 100000) {
-                System.out.println(String.format("Adding batch at count %d", count));
+                out.println(String.format("Adding batch at count %d", count));
                 writer.addDocuments(documents);
                 writer.commit();
-                System.out.println("done");
+                out.println("done");
                 documents.clear();
                 
                 // do a quick morrissey search for fun.
@@ -70,22 +79,26 @@ public class Freedb {
                 Query query = parser.parse("morrissey");
                 TopDocs docs = searcher.search(query, 10);
                 long searchEnd = System.currentTimeMillis();
-                System.out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
+                out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
                 for (ScoreDoc d : docs.scoreDocs) {
-                    System.out.println(String.format("%d %.2f %d", d.doc, d.score, d.shardIndex));
+                    out.println(String.format("%d %.2f %d", d.doc, d.score, d.shardIndex));
                 }
                 
             }
             
             count +=1;
+            if (count >= MAX_ENTRIES) {
+                // done indexing.
+                break;
+            }
             entry = reader.next();
         }
         
         if (documents.size() > 0) {
-            System.out.println(String.format("Adding batch at count %d", count));
+            out.println(String.format("Adding batch at count %d", count));
             writer.addDocuments(documents);
             writer.commit();
-            System.out.println("done");
+            out.println("done");
             documents.clear();
             
             // do a quick morrissey search for fun.
@@ -95,21 +108,21 @@ public class Freedb {
             Query query = parser.parse("morrissey");
             TopDocs docs = searcher.search(query, 10);
             long searchEnd = System.currentTimeMillis();
-            System.out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
+            out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
             for (ScoreDoc d : docs.scoreDocs) {
-                System.out.println(String.format("%d %.2f %d", d.doc, d.score, d.shardIndex));
+                out.println(String.format("%d %.2f %d", d.doc, d.score, d.shardIndex));
             }
         }
         
-        System.out.println("Indexed " + count + " things");
+        out.println("Indexed " + count + " things");
         
         long startMerge = System.currentTimeMillis();
         writer.forceMerge(1, true);
         long endMerge = System.currentTimeMillis();
-        System.out.println(String.format("merge took %d ms", endMerge-startMerge));
-        System.out.println("I think these are the files:");
+        out.println(String.format("merge took %d ms", endMerge-startMerge));
+        out.println("I think these are the files:");
         for (String s : directory.listAll()) {
-            System.out.println(s);
+            out.println(s);
         }
         
         writer.close();
