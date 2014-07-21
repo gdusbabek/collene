@@ -32,12 +32,17 @@ The good news is that there is a ton of low hanging performance fruit. Go for it
 
 There were some here, but I fixed them.
 
+1. Clean up the column families. cmeta and clock could be combined if I ever figure out how to write an empty lock.
+2. Will need another column family that can store a collection of all the file names. I've noted somewhere else how it
+   would be wise to break this out into N rows, rather than a single row. 
+
 ## So Then...
 
 ### Things that need to be verified or implemented and then verified
 
 1. Look at a way to implement `Directory.listAll()`, probably using a long row. (Let's face it, if this grows to
-   millions of entries, you have other problems.)
+   millions of entries, you have other problems.) After thinking about it for a bit, I want to use several long rows
+   and then read from all of them. This is a little way of sharding.
 1. Document retrieval.
 
 ### Questions that might help me figure a few things out.
