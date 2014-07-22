@@ -2,6 +2,7 @@ package collene;
 
 import collene.freedb.FreeDbEntry;
 import collene.freedb.FreeDbReader;
+import com.google.common.base.Charsets;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -20,17 +21,25 @@ import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.Version;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 public class Freedb {
     
-    private static final int MAX_ENTRIES = 10000;// Integer.MAX_VALUE;
-    private static final boolean VERBOSE = true;
+    private static final int MAX_ENTRIES = Integer.MAX_VALUE;
+    private static final int BATCH_SIZE = 10;
+    private static final boolean VERBOSE = false;
     private static PrintStream out = System.out;
     
     public static void main(String args[]) throws Exception {
+        dumpGenres(args);
+        System.exit(0);
+        
         try {
             BuildIndex(args);
         } catch (LockObtainFailedException ex) {
@@ -39,7 +48,35 @@ public class Freedb {
         }
         out.println("\nWill now do an independent search\n");
         DoSearch(args);
+        out.println("\nWill now do an independent search\n");
+        DoSearch(args);
+        out.println("\nWill now do an independent search\n");
+        DoSearch(args);
         System.exit(0);
+    }
+    
+    public static void dumpGenres(String args[]) throws Exception {
+        out.println("dumping genres for fun");
+        String freedbPath = "/Users/gdusbabek/Downloads/freedb-complete-20140701.tar.bz2";
+        FreeDbReader reader = new FreeDbReader(new File(freedbPath), 50000);
+        reader.start();
+        Set<String> genres = new HashSet<String>();
+        FreeDbEntry entry = reader.next();
+        while (entry != null) {
+            if (entry.getGenre() != null && entry.getGenre().length() > 0)
+                genres.add(entry.getGenre().toLowerCase());
+            entry = reader.next();
+        }
+        OutputStream out = new FileOutputStream("/tmp/genres.txt");
+        for (String genre : genres) {
+            try {
+                out.write(genre.getBytes(Charsets.UTF_8));
+                out.write('\n');
+            } catch (Throwable th) {
+                System.out.println(th.getMessage());
+            }
+        }
+        out.close();
     }
     
     public static void DoSearch(String[] args) throws Exception {
@@ -51,15 +88,23 @@ public class Freedb {
         IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(directory));
         Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_4_9);
         QueryParser parser = new QueryParser(Version.LUCENE_4_9, "any", analyzer);
-        long searchStart = System.currentTimeMillis();
-//            Query query = parser.parse("morrissey");
-        Query query = parser.parse("Dance");
-        TopDocs docs = searcher.search(query, 10);
-        long searchEnd = System.currentTimeMillis();
-        out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
-        for (ScoreDoc d : docs.scoreDocs) {
-            out.println(String.format("%d %.2f %d", d.doc, d.score, d.shardIndex));
+        for (int i = 0; i < 5; i++) {
+            long searchStart = System.currentTimeMillis();
+            Query query = parser.parse("morrissey");
+            //Query query = parser.parse("Dance");
+            TopDocs docs = searcher.search(query, 10);
+            long searchEnd = System.currentTimeMillis();
+            out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
+            long lookupStart = System.currentTimeMillis();
+            for (ScoreDoc d : docs.scoreDocs) {
+                Document doc = searcher.doc(d.doc);
+                out.println(String.format("%d %.2f %d %s", d.doc, d.score, d.shardIndex, doc.getField("any").stringValue()));
+            }
+            long lookupEnd = System.currentTimeMillis();
+            out.println(String.format("Document lookup took %d ms for %d documents", lookupEnd-lookupStart, docs.scoreDocs.length));
         }
+        
+        
         directory.close();
     }
     
@@ -74,7 +119,8 @@ public class Freedb {
         FreeDbReader reader = new FreeDbReader(new File(freedbPath), 50000);
         reader.start();
 
-        Collection<Document> documents = new ArrayList<Document>(100000);
+        long indexStart = System.currentTimeMillis();
+        Collection<Document> documents = new ArrayList<Document>(BATCH_SIZE);
         Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_4_9);
         IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_4_9, analyzer);
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
@@ -99,14 +145,29 @@ public class Freedb {
                 out.println(any);
             }
             
-            if (documents.size() == 100000) {
-                out.println(String.format("Adding batch at count %d", count));
+            if (documents.size() == BATCH_SIZE) {
+                //out.println(String.format("Adding batch at count %d", count));
                 writer.addDocuments(documents);
-                writer.commit();
-                out.println("done");
+                //out.println("done");
                 documents.clear();
+            }
+            
+            count +=1;
+            if (count >= MAX_ENTRIES) {
+                // done indexing.
+                break;
+            }
+            entry = reader.next();
+            
+            if (count % 100000 == 0) {
+                out.println(String.format("Indexed %d documents", count));
                 
                 // do a quick morrissey search for fun.
+//                IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(ColDirectory.open(
+//                                new CassandraIO(8192, "collene", "cindex").start("127.0.0.1:9042"),
+//                                new CassandraIO(8192, "collene", "cmeta").start("127.0.0.1:9042"),
+//                                new CassandraIO(8192, "collene", "clock").start("127.0.0.1:9042")
+//                )));
                 IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(writer, false));
                 QueryParser parser = new QueryParser(Version.LUCENE_4_9, "any", analyzer);
                 long searchStart = System.currentTimeMillis();
@@ -117,21 +178,12 @@ public class Freedb {
                 for (ScoreDoc d : docs.scoreDocs) {
                     out.println(String.format("%d %.2f %d", d.doc, d.score, d.shardIndex));
                 }
-                
             }
-            
-            count +=1;
-            if (count >= MAX_ENTRIES) {
-                // done indexing.
-                break;
-            }
-            entry = reader.next();
         }
         
         if (documents.size() > 0) {
             out.println(String.format("Adding batch at count %d", count));
             writer.addDocuments(documents);
-            writer.commit();
             out.println("done");
             documents.clear();
             
@@ -149,18 +201,22 @@ public class Freedb {
             }
         }
         
-        out.println("Indexed " + count + " things");
+        long indexTime = System.currentTimeMillis() - indexStart;
+        out.println(String.format("Indexed %d things in %d ms", count, indexTime));
         
-        long startMerge = System.currentTimeMillis();
-        writer.forceMerge(1, true);
-        long endMerge = System.currentTimeMillis();
-        out.println(String.format("merge took %d ms", endMerge-startMerge));
+        out.println("Committing " + System.currentTimeMillis());
+        writer.commit();
+        out.println("Done committing " + System.currentTimeMillis());
+        
+//        long startMerge = System.currentTimeMillis();
+//        writer.forceMerge(1, true);
+//        long endMerge = System.currentTimeMillis();
+//        out.println(String.format("merge took %d ms", endMerge-startMerge));
         out.println("I think these are the files:");
         for (String s : directory.listAll()) {
             out.println(s);
         }
         
         writer.close(true);
-        //directory.clearLock(IndexWriter.WRITE_LOCK_NAME);
     }
 }
