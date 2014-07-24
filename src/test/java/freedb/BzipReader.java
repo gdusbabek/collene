@@ -1,4 +1,4 @@
-package collene.freedb;
+package freedb;
 
 import com.aftexsw.util.bzip.CBZip2InputStream;
 

@@ -1,4 +1,4 @@
-package collene.freedb;
+package freedb;
 
 import java.io.Serializable;
 import java.util.Hashtable;

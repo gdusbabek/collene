@@ -1,4 +1,4 @@
-package collene.freedb;
+package freedb;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;

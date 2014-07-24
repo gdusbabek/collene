@@ -1,7 +1,7 @@
 package collene;
 
-import collene.freedb.FreeDbEntry;
-import collene.freedb.FreeDbReader;
+import freedb.FreeDbEntry;
+import freedb.FreeDbReader;
 import com.google.common.base.Charsets;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;

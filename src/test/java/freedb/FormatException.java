@@ -1,4 +1,4 @@
-package collene.freedb;
+package freedb;
 
 /**
  * Thrown when a data format problem is encountered.

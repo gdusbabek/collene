@@ -1,4 +1,4 @@
-package collene.freedb;
+package freedb;
 
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;

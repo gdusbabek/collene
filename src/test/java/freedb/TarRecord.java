@@ -1,4 +1,4 @@
-package collene.freedb;
+package freedb;
 
 /**
  * Simple TAR record.
