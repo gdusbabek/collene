@@ -6,6 +6,7 @@ import java.util.Random;
 
 public class TestUtil {
     private static final Random random = new Random(System.nanoTime());
+    private static char[] chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".toCharArray();
             
     public static File getRandomTempDir() {
         String path = System.getProperty("java.io.tmpdir");
@@ -23,5 +24,13 @@ public class TestUtil {
             }
         }
         f.delete();
+    }
+    
+    public static String randomString(int length) {
+        char[] ch = new char[length];
+        for (int i = 0; i < length; i++) {
+            ch[i] = chars[random.nextInt(chars.length)];
+        }
+        return new String(ch);
     }
 }

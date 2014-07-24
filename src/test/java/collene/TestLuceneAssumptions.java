@@ -13,6 +13,7 @@ import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
@@ -64,5 +65,84 @@ public class TestLuceneAssumptions {
         
         writer.close();
         dir.close();
+    }
+    
+    @Test
+    public void listAfterEachStep() throws Exception {
+        File fdir = TestUtil.getRandomTempDir();
+        pleaseDelete.add(fdir);
+        
+        Directory dir = FSDirectory.open(fdir);
+        Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_4_9);
+        IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_4_9, analyzer);
+        config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
+        
+        System.out.println("Before creating writer");
+        dump(fdir, dir);
+        
+        IndexWriter writer = new IndexWriter(dir, config);
+        System.out.println("After creating writer");
+        dump(fdir, dir);
+        
+        List<Document> docs = new ArrayList<Document>();
+        for (int i = 0; i < 50000; i++) {
+            Document doc = new Document();
+            for (int f = 0; f < 5; f++) {
+                doc.add(new Field("field_" + f, TestUtil.randomString(128), TextField.TYPE_STORED));
+            }
+            docs.add(doc);
+        }
+        writer.addDocuments(docs, analyzer);
+        docs.clear();
+        
+        System.out.println("After doc add 0");
+        dump(fdir, dir);
+        
+        for (int i = 0; i < 50000; i++) {
+            Document doc = new Document();
+            for (int f = 0; f < 5; f++) {
+                doc.add(new Field("field_" + f, TestUtil.randomString(128), TextField.TYPE_STORED));
+            }
+            docs.add(doc);
+        }
+        writer.addDocuments(docs, analyzer);
+        docs.clear();
+        
+        System.out.println("After doc add 1");
+        dump(fdir, dir);
+        
+        writer.commit();
+        
+        System.out.println("After commit");
+        dump(fdir, dir);
+        
+        writer.forceMerge(1, true);
+        System.out.println("Right after merge");
+        dump(fdir, dir);
+        
+        try { Thread.currentThread().sleep(5000); } catch (Exception ex) {}
+        System.out.println("After sleeping after merge");
+        dump(fdir, dir);
+        
+        writer.close();
+        System.out.println("After writer close");
+        dump(fdir, dir);
+        
+        dir.close();
+        System.out.println("After dir close");
+        dump(fdir, dir);
+    }
+    
+    private static void dump(File fileDir, Directory indexDir) throws Exception {
+        for (File f : fileDir.listFiles()) {
+            System.out.println(String.format("f %s", f.getAbsolutePath()));
+        }
+        try {
+            for (String s : indexDir.listAll()) {
+                System.out.println(String.format("i %s", s));
+            }
+        } catch (AlreadyClosedException ex) {
+            System.out.println("Cannot list closed directory");
+        }
     }
 }
