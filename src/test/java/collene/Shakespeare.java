@@ -135,6 +135,6 @@ public class Shakespeare {
         
         writer.close(true);
         System.out.println(String.format("%s closed", directory.getClass().getSimpleName()));
-        
+        directory.close();
     }
 }
