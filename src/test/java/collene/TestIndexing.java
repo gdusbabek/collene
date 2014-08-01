@@ -57,7 +57,7 @@ public class TestIndexing {
     
     // chances are that I'm breaking rules trying to create a static CassandraCQLUnit instance. But this is how I got
     // it to work. Also, it was important to me that I use the same cassandra database for each test.
-    public static CassandraCQLUnit cassandra = new CassandraCQLUnit(new ClassPathCQLDataSet("ddl.cql", "collene"), null, "127.0.0.1", 9042) {{
+    public static CassandraCQLUnit cassandra = new CassandraCQLUnit(new ClassPathCQLDataSet("ddl.cql", "collene"), "/cassandra.yaml", "127.0.0.1", 9042) {{
         try {
             if (!isTravis) {
                 this.before();
