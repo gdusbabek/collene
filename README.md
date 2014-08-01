@@ -1,4 +1,4 @@
-# Collene
+# Collene [![Build Status](https://secure.travis-ci.org/gdusbabek/collene.png)](http://travis-ci.org/gdusbabek/collene)
 
 Sorry. I suck at naming things. COLumns + lucENE.
 
