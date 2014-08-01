@@ -49,7 +49,7 @@ public class TestIndexing {
         //list.add(memColDirectory);
         
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
-                new CassandraIO(256, "collene", "cindex").start("127.0.0.1:9042"),
+                new CassandraIO("gg", 256, "collene", "cindex").start("127.0.0.1:9042"),
                 new MemoryIO(256),
                 new MemoryIO(256))
         };

@@ -53,7 +53,7 @@ public class Shakespeare {
         //list.add(memColDirectory);
         
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
-                new CassandraIO(8192, "collene", "cindex").start("127.0.0.1:9042"),
+                new CassandraIO("hh", 8192, "collene", "cindex").start("127.0.0.1:9042"),
                 new MemoryIO(8192),
                 new MemoryIO(8192))
         };

@@ -81,9 +81,9 @@ public class Freedb {
     
     public static void DoSearch(String[] args) throws Exception {
         Directory directory = ColDirectory.open(
-                new CassandraIO(8192, "collene", "cindex").start("127.0.0.1:9042"),
-                new CassandraIO(8192, "collene", "cmeta").start("127.0.0.1:9042"),
-                new CassandraIO(8192, "collene", "clock").start("127.0.0.1:9042")
+                new CassandraIO("aa", 8192, "collene", "cindex").start("127.0.0.1:9042"),
+                new CassandraIO("bb", 8192, "collene", "cmeta").start("127.0.0.1:9042"),
+                new CassandraIO("cc", 8192, "collene", "clock").start("127.0.0.1:9042")
         );
         IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(directory));
         Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_4_9);
@@ -111,9 +111,9 @@ public class Freedb {
     public static void BuildIndex(String[] args) throws Exception {
         String freedbPath = "/Users/gdusbabek/Downloads/freedb-complete-20140701.tar.bz2";
         Directory directory = ColDirectory.open(
-                new CassandraIO(8192, "collene", "cindex").start("127.0.0.1:9042"),
-                new CassandraIO(8192, "collene", "cmeta").start("127.0.0.1:9042"),
-                new CassandraIO(8192, "collene", "clock").start("127.0.0.1:9042")
+                new CassandraIO("dd", 8192, "collene", "cindex").start("127.0.0.1:9042"),
+                new CassandraIO("ee", 8192, "collene", "cmeta").start("127.0.0.1:9042"),
+                new CassandraIO("ff", 8192, "collene", "clock").start("127.0.0.1:9042")
         );
 
         FreeDbReader reader = new FreeDbReader(new File(freedbPath), 50000);
