@@ -37,7 +37,7 @@ start_native_transport: true
 native_transport_port: 9042
 start_rpc: true
 rpc_address: 127.0.0.1
-rpc_port: 19180
+rpc_port: 9160
 rpc_keepalive: true
 rpc_server_type: sync
 thrift_framed_transport_size_in_mb: 15
