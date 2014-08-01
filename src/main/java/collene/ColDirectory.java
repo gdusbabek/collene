@@ -42,7 +42,7 @@ public class ColDirectory extends Directory {
      */
     @Override
     public String[] listAll() throws IOException {
-        return metaIO.allKeys(); // should be the same as indexIO though.
+        return indexIO.allKeys();
     }
 
     @Override

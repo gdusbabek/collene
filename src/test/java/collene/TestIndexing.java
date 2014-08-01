@@ -51,17 +51,17 @@ public class TestIndexing {
         
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
                 "casscol",
-                new CassandraIO("gg", 256, "collene", "cindex").start("127.0.0.1:9042"),
-                new MemoryIO(256),
-                new MemoryIO(256))
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cindex").start("127.0.0.1:9042"),
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cmeta").start("127.0.0.1:9042"),
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "clock").start("127.0.0.1:9042"))
         };
         list.add(cassColDirectory);
         
         Object[] splitRowDirectory = new Object[] { ColDirectory.open(
                 "casscolsplit",
-                new SplitRowIO(20, "/", new CassandraIO("ii", 256, "collene", "cindex").start("127.0.0.1:9042")),
-                new MemoryIO(256),
-                new MemoryIO(256))
+                new SplitRowIO(20, "/", new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cindex").start("127.0.0.1:9042")),
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cmeta").start("127.0.0.1:9042"),
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "clock").start("127.0.0.1:9042"))
         };
         list.add(splitRowDirectory);
         

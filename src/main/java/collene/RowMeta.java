@@ -25,6 +25,9 @@ public class RowMeta {
             return cache.get(key);
         } else {
             byte[] buf = io.get(key, ROW_LENGTH);
+            if (buf == null) {
+                throw new NullPointerException("Null bytes for key " + key);
+            }
             assert buf.length == 8;
             long length = Utils.bytesToLong(buf);
             cache.put(key, length);

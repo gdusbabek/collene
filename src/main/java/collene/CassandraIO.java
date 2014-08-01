@@ -134,7 +134,7 @@ public class CassandraIO implements IO {
     @Override
     public String[] allKeys() throws IOException {
         ensureSession();
-        PreparedStatement stmt = session.prepare("select value from %s.%s where key = ?");
+        PreparedStatement stmt = session.prepare(String.format("select value from %s.%s where key = ?", keyspace, index));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
         ResultSet rs = session.execute(bndStmt.bind(prefixedKeyListKey));
         Row row = rs.one();
