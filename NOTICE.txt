@@ -1,0 +1,21 @@
+Collene
+Copyright 2014 Gary Dusbabek
+
+I release this software except those parts explicitly noted as developed by others under the Apache 2 license (see
+LICENSE file).
+
+This product contains free software developed by Aftex Software, Jay A. Key (akey@users.sourceforge.net), and
+Julian R Seward. For more details see the license in the headers of CBZip2InputStream.java, CRC.java and 
+BZip2Constants.java
+
+Data provided by Freedb.org (none of which is included with this software) is provided under the GPL. See
+http://www.freedb.org/en/about_freedborg.2.html for more information.
+
+The Shakespeare plays were downloaded from http://sydney.edu.au/engineering/it/~matty/Shakespeare/shakespeare.tar.gz
+
+Alternative collection types provided by Google Guava from
+http://code.google.com/p/guava-libraries/
+Copyright (C) 2007 Google Inc.
+
+"Apache", "Apache Cassandra", and "Apache Lucene" are trademarks of the Apache Software Foundation
+(http://www.apache.org).
