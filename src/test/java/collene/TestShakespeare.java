@@ -65,7 +65,7 @@ public class TestShakespeare {
         Object[] memColDirectory = new Object[] { ColDirectory.open(
                 "shakespeare.mem",
                 new MemoryIO(4096)) };
-        //list.add(memColDirectory);
+        list.add(memColDirectory);
         
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
                 "shakespeare.cass",
