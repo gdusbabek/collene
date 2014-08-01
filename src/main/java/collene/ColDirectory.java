@@ -30,10 +30,9 @@ public class ColDirectory extends Directory {
     private final String name;
     private LockFactory lockFactory;
     private IO indexIO;
-    private IO metaIO;
     private RowMeta meta;
     
-    private ColDirectory(String name, IO indexIO, IO metaIO, LockFactory lockFactory) {
+    private ColDirectory(String name, IO indexIO, RowMeta meta, LockFactory lockFactory) {
         
         if (lockFactory == null) {
             throw new RuntimeException("Must supply a lock factory");
@@ -41,16 +40,15 @@ public class ColDirectory extends Directory {
         
         this.name = name;
         this.indexIO = indexIO;
-        this.meta = new RowMeta(metaIO);
-        this.metaIO = metaIO;
+        this.meta = meta;
         this.lockFactory = lockFactory;
         
         // link the lock factory to this directory instance.
         lockFactory.setLockPrefix(name);
     }
 
-    public static ColDirectory open(String name, IO indexIO, IO metaIO) {
-        return new ColDirectory(name, indexIO, metaIO, new IoLockFactory(indexIO));    
+    public static ColDirectory open(String name, IO indexIO) {
+        return new ColDirectory(name, indexIO, new RowMeta(indexIO), new IoLockFactory(indexIO));    
     }
     
     /**
@@ -64,7 +62,7 @@ public class ColDirectory extends Directory {
     @Override
     public void deleteFile(String name) throws IOException {
         indexIO.delete(name);
-        metaIO.delete(name);
+        meta.delete(name);
     }
 
     @Override
@@ -108,17 +106,17 @@ public class ColDirectory extends Directory {
 
     @Override
     public IndexOutput createOutput(String name, IOContext context) throws IOException {
-        return new RowIndexOutput(name, new RowWriter(name, indexIO, metaIO));
+        return new RowIndexOutput(name, new RowWriter(name, indexIO, meta));
     }
 
     @Override
     public IndexInput openInput(String name, IOContext context) throws IOException {
-        return new RowIndexInput(name, new RowReader(name, indexIO, metaIO));
+        return new RowIndexInput(name, new RowReader(name, indexIO, meta));
     }
 
     @Override
     public boolean fileExists(String s) throws IOException {
-        return metaIO.hasKey(s);
+        return meta.getLength(s) > -1;
     }
 
     @Override

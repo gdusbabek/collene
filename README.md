@@ -31,10 +31,8 @@ There is a ton of low hanging performance fruit. Go for it.
 
 ## TODOs and Bugs That I Know About
 
-1. Clean up the column families. cmeta and clock could be combined if I ever figure out how to write an empty lock.
-1. Will need another column family that can store a collection of all the file names. I've noted somewhere else how it
-   would be wise to break this out into N rows, rather than a single row.
-1. Multi-directory writing and merging (without IO penalty).
+1. Multi-directory writing and merging.
+1. Multi-directory merging (without IO penalty).
 
 ## So Then...
 
@@ -51,6 +49,8 @@ There is a ton of low hanging performance fruit. Go for it.
 
 ### Things I haven't thought too deeply about, but may be a problem.
 
+1. Atomicity. I've treated non-atomic operations (file meta updates) as atomic operations associated with row (file)
+   writes.
 1. What happens in a partitioned environment?
   * Hypothetically, there could be two writers, which would be bad, very bad.
   * As long as writes are always controlled by a single, same node, we are fine.

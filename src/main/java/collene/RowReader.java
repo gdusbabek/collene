@@ -25,10 +25,10 @@ public class RowReader {
     private final IO io;
     private final RowMeta meta;
     
-    public RowReader(String key, IO io, IO metaIo) {
+    public RowReader(String key, IO io, RowMeta meta) {
         this.key = key;
         this.io = new CachingCompositeIO(io);
-        this.meta = new RowMeta(metaIo);
+        this.meta = meta;
     }
     
     public byte getByte(long pointer) throws IOException {

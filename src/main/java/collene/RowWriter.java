@@ -24,10 +24,10 @@ public class RowWriter {
     private final CachingCompositeIO io;
     private final RowMeta meta;
     
-    public RowWriter(String key, IO io, IO metaIo) {
+    public RowWriter(String key, IO io, RowMeta meta) {
         this.key = key;
         this.io = new CachingCompositeIO(io);
-        this.meta = new RowMeta(metaIo);
+        this.meta = meta;
     }
     
     public void flush() throws IOException {

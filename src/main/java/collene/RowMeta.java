@@ -26,7 +26,9 @@ import java.util.Set;
  * Holds on to file meta information (currently just the length), flushing it when told.
  */
 public class RowMeta {
-    public static final long ROW_LENGTH = 0;
+    private static final long ROW_LENGTH_COL = 0;
+    private static final String ROW_PREFIX = "__COLLENE_META_ROW_PREFIX__";
+    
     
     private final IO io;
     private final Map<String, Long> cache = new HashMap<String, Long>();
@@ -40,7 +42,7 @@ public class RowMeta {
         if (cache.containsKey(key)) {
             return cache.get(key);
         } else {
-            byte[] buf = io.get(key, ROW_LENGTH);
+            byte[] buf = io.get(prefix(key), ROW_LENGTH_COL);
             if (buf == null) {
                 throw new NullPointerException("Null bytes for key " + key);
             }
@@ -56,7 +58,7 @@ public class RowMeta {
         if (commit) {
             byte[] buf = Utils.longToBytes(length);
             assert buf.length == 8;
-            io.put(key, ROW_LENGTH, buf);
+            io.put(prefix(key), ROW_LENGTH_COL, buf);
         } else {
             dirty.add(key);
         }
@@ -64,11 +66,19 @@ public class RowMeta {
     
     public void flush(boolean clear) throws IOException {
         for (String key : dirty) {
-            io.put(key, ROW_LENGTH, Utils.longToBytes(cache.get(key)));
+            io.put(prefix(key), ROW_LENGTH_COL, Utils.longToBytes(cache.get(key)));
         }
         if (clear) {
             cache.clear();
             dirty.clear();
         }
+    }
+    
+    public void delete(String key) throws IOException {
+        io.delete(prefix(key));
+    }
+    
+    private static String prefix(String key) {
+        return String.format("%s.%s", ROW_PREFIX, key);
     }
 }
