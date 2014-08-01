@@ -35,6 +35,7 @@ There were some here, but I fixed them.
 1. Clean up the column families. cmeta and clock could be combined if I ever figure out how to write an empty lock.
 2. Will need another column family that can store a collection of all the file names. I've noted somewhere else how it
    would be wise to break this out into N rows, rather than a single row. 
+3. Change the architecture so that `IO.allKeys()` is not needed.
 
 ## So Then...
 
