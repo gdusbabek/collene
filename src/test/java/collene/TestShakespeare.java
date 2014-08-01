@@ -33,6 +33,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.QueryBuilder;
 import org.apache.lucene.util.Version;
+import org.cassandraunit.CassandraCQLUnit;
+import org.cassandraunit.dataset.cql.ClassPathCQLDataSet;
 import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -52,6 +54,18 @@ public class TestShakespeare {
     
     private static File fsIndexDir = TestUtil.getRandomTempDir();
     
+    private static final boolean isTravis = System.getenv().containsKey("TRAVIS") && System.getenv().get("TRAVIS").equals("true");
+    public static CassandraCQLUnit cassandra = new CassandraCQLUnit(new ClassPathCQLDataSet("ddl.cql", "collene"), "/cassandra.yaml", "127.0.0.1", 9042) {{
+        try {
+            if (!isTravis) {
+                this.before();
+            }
+            this.load();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }};
+    
     private Directory directory;
     
     @Parameterized.Parameters
@@ -69,7 +83,7 @@ public class TestShakespeare {
         
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
                 "shakespeare.cass",
-                new CassandraIO(NextCassandraPrefix.get(), 8192, "collene", "cindex").start("127.0.0.1:9042"))
+                new CassandraIO(NextCassandraPrefix.get(), 8192, "collene", "cindex").session(cassandra.session))
         };
         list.add(cassColDirectory);
         
