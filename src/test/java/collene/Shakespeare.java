@@ -65,14 +65,12 @@ public class Shakespeare {
         Object[] memColDirectory = new Object[] { ColDirectory.open(
                 "shakespeare.mem",
                 new MemoryIO(4096), 
-                new MemoryIO(4096), 
                 new MemoryIO(4096)) };
         //list.add(memColDirectory);
         
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
                 "shakespeare.cass",
                 new CassandraIO(NextCassandraPrefix.get(), 8192, "collene", "cindex").start("127.0.0.1:9042"),
-                new MemoryIO(8192),
                 new MemoryIO(8192))
         };
         list.add(cassColDirectory);

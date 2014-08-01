@@ -43,7 +43,7 @@ import java.util.Set;
 public class CassandraIO implements IO {
     // special row key used to store all keys. todo: obvious consistency problems. I think we mostly get around this in
     // lucene by knowing that a particular Directory instnace only operates on a subset of the keys.
-    private static final String KEY_LIST_KEY = "__COLLLENE_KEY_LIST_KEY__";
+    private static final String KEY_LIST_KEY = "__COLLENE_KEY_LIST_KEY__";
     private final int columnSize;
     private final String keyspace;
     private final String index;

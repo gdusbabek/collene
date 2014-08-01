@@ -22,6 +22,7 @@ import org.apache.lucene.store.LockFactory;
 import java.io.IOException;
 
 public class IoLockFactory extends LockFactory {
+    private static final String LOCK_PREFIX = "__COLLENE_LOCK_FACTORY_PREFIX__";
     private static final long LOCK_COL = 0;
     private static final byte LOCKED = 1;
     private static final byte UNLOCKED = 0;
@@ -33,7 +34,7 @@ public class IoLockFactory extends LockFactory {
 
     @Override
     public Lock makeLock(String lockName) {
-        String realName = this.getLockPrefix() + "-" + lockName;
+        String realName = String.format("%s.%s.%s", LOCK_PREFIX, getLockPrefix(), lockName);
         return new IoLock(realName);
     }
 
@@ -43,7 +44,7 @@ public class IoLockFactory extends LockFactory {
     }
     
     private class IoLock extends Lock {
-        private String fullName;
+        private final String fullName;
         
         private IoLock(String fullName) {
             this.fullName = fullName;

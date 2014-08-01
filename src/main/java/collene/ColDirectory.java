@@ -49,8 +49,8 @@ public class ColDirectory extends Directory {
         lockFactory.setLockPrefix(name);
     }
 
-    public static ColDirectory open(String name, IO indexIO, IO metaIO, IO lockIO) {
-        return new ColDirectory(name, indexIO, metaIO, new IoLockFactory(lockIO));    
+    public static ColDirectory open(String name, IO indexIO, IO metaIO) {
+        return new ColDirectory(name, indexIO, metaIO, new IoLockFactory(indexIO));    
     }
     
     /**

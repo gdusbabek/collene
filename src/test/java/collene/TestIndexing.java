@@ -79,7 +79,6 @@ public class TestIndexing {
         Object[] memColDirectory = new Object[] { ColDirectory.open(
                 "mem",
                 new MemoryIO(256), 
-                new MemoryIO(256), 
                 new MemoryIO(256)) };
         list.add(memColDirectory);
         
@@ -90,16 +89,14 @@ public class TestIndexing {
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
                 "casscol",
                 new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cindex").session(cassandra.session),
-                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cmeta").session(cassandra.session),
-                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "clock").session(cassandra.session))
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cmeta").session(cassandra.session))
         };
         list.add(cassColDirectory);
         
         Object[] splitRowDirectory = new Object[] { ColDirectory.open(
                 "casscolsplit",
                 new SplitRowIO(20, "/", new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cindex").session(cassandra.session)),
-                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cmeta").session(cassandra.session),
-                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "clock").session(cassandra.session))
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cmeta").session(cassandra.session))
         };
         list.add(splitRowDirectory);
         
