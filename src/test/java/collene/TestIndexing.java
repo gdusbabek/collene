@@ -46,7 +46,7 @@ public class TestIndexing {
                 new MemoryIO(256), 
                 new MemoryIO(256), 
                 new MemoryIO(256)) };
-        //list.add(memColDirectory);
+        list.add(memColDirectory);
         
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
                 new CassandraIO("gg", 256, "collene", "cindex").start("127.0.0.1:9042"),
@@ -54,6 +54,13 @@ public class TestIndexing {
                 new MemoryIO(256))
         };
         list.add(cassColDirectory);
+        
+        Object[] splitRowDirectory = new Object[] { ColDirectory.open(
+                new SplitRowIO(20, "/", new CassandraIO("ii", 256, "collene", "cindex").start("127.0.0.1:9042")),
+                new MemoryIO(256),
+                new MemoryIO(256))
+        };
+        list.add(splitRowDirectory);
         
         return list;
     }
@@ -103,5 +110,8 @@ public class TestIndexing {
         query = parser.parse("fersoius");
         docs = searcher.search(query, 1);
         Assert.assertFalse(docs.totalHits > 0);
+        
+        writer.close();
+        directory.close();
     }
 }

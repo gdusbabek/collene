@@ -23,8 +23,9 @@ I've included a `MemoryIO` implementation in testing (it works), and a `Cassandr
 
 ## It Sucks, But It's Getting Better.
 
-Lucene does a lot of tiny one-byte writes. This means performance will be poor because chances are that you need to
-first read a column before you apply the update.
+Lucene does a lot of tiny one-byte writes. <strike>This means performance will be poor because chances are that you need to
+first read a column before you apply the update.</strike> Collene batches IO for performance. This works well with 
+Lucene because semantically either a file exists, or it doesn't, and files are never modified.
 
 The good news is that there is a ton of low hanging performance fruit. Go for it.
 
@@ -35,7 +36,7 @@ There were some here, but I fixed them.
 1. Clean up the column families. cmeta and clock could be combined if I ever figure out how to write an empty lock.
 2. Will need another column family that can store a collection of all the file names. I've noted somewhere else how it
    would be wise to break this out into N rows, rather than a single row. 
-3. Change the architecture so that `IO.allKeys()` is not needed.
+3. `TestIndexing` currently fails because the write lock cannot be obtained across invocations.
 
 ## So Then...
 
