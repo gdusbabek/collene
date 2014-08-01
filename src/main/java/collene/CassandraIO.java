@@ -1,5 +1,6 @@
 package collene;
 
+import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ConsistencyLevel;
@@ -7,12 +8,16 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.google.common.base.Charsets;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -20,6 +25,9 @@ import java.util.List;
 import java.util.Set;
 
 public class CassandraIO implements IO {
+    // special row key used to store all keys. todo: obvious consistency problems. I think we mostly get around this in
+    // lucene by knowing that a particular Directory instnace only operates on a subset of the keys.
+    private static final String KEY_LIST_KEY = "__COLLLENE_KEY_LIST_KEY__";
     private final int columnSize;
     private final String keyspace;
     private final String index;
@@ -27,8 +35,15 @@ public class CassandraIO implements IO {
     private Cluster cluster;
     private Session session = null;
     
-    // todo: hack until I figure out how to address this.
-    private Set<String> allKeys = new HashSet<String>();
+    private static final ThreadLocal<CharsetDecoder> decoders = new ThreadLocal<CharsetDecoder>() {
+        @Override
+        protected CharsetDecoder initialValue() {
+            return Charsets.UTF_8.newDecoder();
+        }
+    };
+    
+    // no attempt to make consistent. races are entirely possible. deal with it for now.
+    private Set<String> keyCache = new HashSet<>();
     
     public CassandraIO(int columnSize, String keyspace, String index) {
         this.columnSize = columnSize;
@@ -73,11 +88,20 @@ public class CassandraIO implements IO {
     
     @Override
     public void put(String key, long col, byte[] value) throws IOException {
-        allKeys.add(key);
+        boolean needsKeyRowUpdate = keyCache.add(key);
         ensureSession();
+        BatchStatement batch = new BatchStatement();
         PreparedStatement stmt = session.prepare(String.format("insert into %s.%s (key, name, value) values(?, ?, ?);", keyspace, index));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
-        session.execute(bndStmt.bind(key, col, ByteBuffer.wrap(value)));
+        batch.add(bndStmt.bind(key, col, ByteBuffer.wrap(value)));
+        
+        if (needsKeyRowUpdate) {
+            stmt = session.prepare(String.format("insert into %s.%s (key, name, value) values (?, ?, ?);", keyspace, index));
+            bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
+            batch.add(bndStmt.bind(KEY_LIST_KEY, (long)key.hashCode(), ByteBuffer.wrap(key.getBytes(Charsets.UTF_8))));
+        }
+        
+        session.execute(batch);
     }
 
     @Override
@@ -103,20 +127,49 @@ public class CassandraIO implements IO {
 
     @Override
     public String[] allKeys() throws IOException {
-        return allKeys.toArray(new String[allKeys.size()]);
+        ensureSession();
+        PreparedStatement stmt = session.prepare("select value from %s.%s where key = ?");
+        BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
+        ResultSet rs = session.execute(bndStmt.bind(KEY_LIST_KEY));
+        Row row = rs.one();
+        if (row == null) {
+            return new String[]{};
+        } else {
+            String[] keys = new String[row.getColumnDefinitions().size()];
+            for (int i = 0; i < keys.length; i++) {
+                keys[i] = toString(row.getBytes(i));
+            }
+            return keys;
+        }
+    }
+    
+    private static String toString(ByteBuffer bb) throws CharacterCodingException {
+        CharBuffer cb = decoders.get().decode(bb.duplicate());
+        return cb.toString();
     }
 
     @Override
     public void delete(String key) throws IOException {
-        allKeys.remove(key);
         ensureSession();
+        
+        BatchStatement delBatch = new BatchStatement();
+        
         PreparedStatement stmt = session.prepare(String.format("delete from %s.%s where key = ?", keyspace, index));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
-        session.execute(bndStmt.bind(key));
+        delBatch = delBatch.add(bndStmt.bind(key));
+        
+        stmt = session.prepare(String.format("delete from %s.%s where key = ? and name = ?", keyspace, index));
+        bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
+        delBatch = delBatch.add(bndStmt.bind(KEY_LIST_KEY, (long)key.hashCode()));
+        
+        session.execute(delBatch);
+        
+        keyCache.remove(key);
     }
 
     @Override
     public boolean hasKey(String key) throws IOException {
+        // todo: this way vs doing allKeys()?
         return get(key, 0L) != null;
     }
 }
