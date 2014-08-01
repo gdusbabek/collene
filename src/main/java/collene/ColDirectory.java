@@ -11,20 +11,30 @@ import java.io.IOException;
 import java.util.Collection;
 
 public class ColDirectory extends Directory {
+    private final String name;
     private LockFactory lockFactory;
     private IO indexIO;
     private IO metaIO;
     private RowMeta meta;
     
-    private ColDirectory(IO indexIO, IO metaIO, LockFactory lockFactory) {
+    private ColDirectory(String name, IO indexIO, IO metaIO, LockFactory lockFactory) {
+        
+        if (lockFactory == null) {
+            throw new RuntimeException("Must supply a lock factory");
+        }
+        
+        this.name = name;
         this.indexIO = indexIO;
         this.meta = new RowMeta(metaIO);
         this.metaIO = metaIO;
         this.lockFactory = lockFactory;
+        
+        // link the lock factory to this directory instance.
+        lockFactory.setLockPrefix(name);
     }
 
-    public static ColDirectory open(IO indexIO, IO metaIO, IO lockIO) {
-        return new ColDirectory(indexIO, metaIO, new IoLockFactory(lockIO));    
+    public static ColDirectory open(String name, IO indexIO, IO metaIO, IO lockIO) {
+        return new ColDirectory(name, indexIO, metaIO, new IoLockFactory(lockIO));    
     }
     
     /**
@@ -58,9 +68,7 @@ public class ColDirectory extends Directory {
 
     @Override
     public void clearLock(String name) throws IOException {
-        if (lockFactory != null) {
-            lockFactory.clearLock(name);
-        }
+        lockFactory.clearLock(name);
     }
 
     @Override
@@ -95,5 +103,15 @@ public class ColDirectory extends Directory {
     @Override
     public boolean fileExists(String s) throws IOException {
         return metaIO.hasKey(s);
+    }
+
+    @Override
+    public String getLockID() {
+        return name;
+    }
+
+    @Override
+    public String toString() {
+        return name + " " + super.toString();
     }
 }

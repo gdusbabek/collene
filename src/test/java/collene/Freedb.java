@@ -35,6 +35,7 @@ public class Freedb {
     private static final int BATCH_SIZE = 10;
     private static final boolean VERBOSE = false;
     private static PrintStream out = System.out;
+    private static final String name = "freedb.cass";
     
     public static void main(String args[]) throws Exception {
         dumpGenres(args);
@@ -81,6 +82,7 @@ public class Freedb {
     
     public static void DoSearch(String[] args) throws Exception {
         Directory directory = ColDirectory.open(
+                name,
                 new CassandraIO("aa", 8192, "collene", "cindex").start("127.0.0.1:9042"),
                 new CassandraIO("bb", 8192, "collene", "cmeta").start("127.0.0.1:9042"),
                 new CassandraIO("cc", 8192, "collene", "clock").start("127.0.0.1:9042")
@@ -111,6 +113,7 @@ public class Freedb {
     public static void BuildIndex(String[] args) throws Exception {
         String freedbPath = "/Users/gdusbabek/Downloads/freedb-complete-20140701.tar.bz2";
         Directory directory = ColDirectory.open(
+                name,
                 new CassandraIO("dd", 8192, "collene", "cindex").start("127.0.0.1:9042"),
                 new CassandraIO("ee", 8192, "collene", "cmeta").start("127.0.0.1:9042"),
                 new CassandraIO("ff", 8192, "collene", "clock").start("127.0.0.1:9042")

@@ -7,8 +7,8 @@ import java.io.IOException;
 
 public class IoLockFactory extends LockFactory {
     private static final long LOCK_COL = 0;
-    private static final byte[] UNLOCKED = new byte[]{0};
-    private static final byte[] LOCKED = new byte[]{1};
+    private static final byte LOCKED = 1;
+    private static final byte UNLOCKED = 0;
     private final IO io;
     
     IoLockFactory(IO io) {
@@ -36,23 +36,16 @@ public class IoLockFactory extends LockFactory {
         @Override
         public boolean obtain() throws IOException {
             byte[] buf = io.get(fullName, LOCK_COL);
-            if (buf == null) {
-                buf = UNLOCKED;
+            byte status = buf == null ? UNLOCKED : buf[0];
+            if (status != LOCKED) {
+                io.put(fullName, LOCK_COL, new byte[] {LOCKED});
             }
-            if (buf[0] == 1)
-                return false;
-            else {
-                buf[0] = 1;
-                io.put(fullName, LOCK_COL, LOCKED);
-                return true;
-            }
-            
+            return status != LOCKED;
         }
 
         @Override
         public void close() throws IOException {
-            //io.put(fullName, LOCK_COL, UNLOCKED); // this should work, but doesn't.
-            io.delete(fullName);
+            io.put(fullName, LOCK_COL, new byte[] {UNLOCKED});
         }
 
         @Override

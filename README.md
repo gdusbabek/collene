@@ -31,7 +31,6 @@ The good news is that there is a ton of low hanging performance fruit. Go for it
 
 ## TODOs and Bugs That I Know About
 
-1. `TestIndexing` currently fails because the write lock cannot be obtained across invocations.
 1. Use Cassandra-unit for testing.
 1. Travis-CI builder.
 1. Clean up the column families. cmeta and clock could be combined if I ever figure out how to write an empty lock.

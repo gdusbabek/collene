@@ -43,12 +43,14 @@ public class TestIndexing {
         list.add(fsDirectory);
         
         Object[] memColDirectory = new Object[] { ColDirectory.open(
+                "mem",
                 new MemoryIO(256), 
                 new MemoryIO(256), 
                 new MemoryIO(256)) };
         list.add(memColDirectory);
         
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
+                "casscol",
                 new CassandraIO("gg", 256, "collene", "cindex").start("127.0.0.1:9042"),
                 new MemoryIO(256),
                 new MemoryIO(256))
@@ -56,6 +58,7 @@ public class TestIndexing {
         list.add(cassColDirectory);
         
         Object[] splitRowDirectory = new Object[] { ColDirectory.open(
+                "casscolsplit",
                 new SplitRowIO(20, "/", new CassandraIO("ii", 256, "collene", "cindex").start("127.0.0.1:9042")),
                 new MemoryIO(256),
                 new MemoryIO(256))
