@@ -3,6 +3,12 @@ jdk:
   - oraclejdk7
   - openjdk7
 
+env:
+  - TRAVIS=true
+
+services:
+  - cassandra
+
 install:
   - mvn install -Dmaven.test.skip
 
