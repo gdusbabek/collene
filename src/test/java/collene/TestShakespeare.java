@@ -48,7 +48,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 @RunWith(Parameterized.class)
-public class Shakespeare {
+public class TestShakespeare {
     
     private static File fsIndexDir = TestUtil.getRandomTempDir();
     
@@ -58,7 +58,7 @@ public class Shakespeare {
     public static Collection<Object[]> data() throws Exception {
         Collection<Object[]> list = new ArrayList<Object[]>();
         
-        System.out.println("Using test dir " + fsIndexDir.getAbsolutePath());
+        //System.out.println("Using test dir " + fsIndexDir.getAbsolutePath());
         Object[] fsDirectory = new Object[]{ FSDirectory.open(fsIndexDir) };
         list.add(fsDirectory);
         
@@ -76,7 +76,7 @@ public class Shakespeare {
         return list;
     }
     
-    public Shakespeare(Directory directory) {
+    public TestShakespeare(Directory directory) {
         this.directory = directory;
     }
     
@@ -122,13 +122,13 @@ public class Shakespeare {
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
         IndexWriter writer = new IndexWriter(directory, config);
         writer.addDocuments(documents);
-        System.out.println(String.format("%s %d documents added", directory.getClass().getSimpleName(), documents.size()));
+        //System.out.println(String.format("%s %d documents added", directory.getClass().getSimpleName(), documents.size()));
         writer.commit();
-        System.out.println(String.format("%s committed", directory.getClass().getSimpleName()));
+        //System.out.println(String.format("%s committed", directory.getClass().getSimpleName()));
 //        writer.forceMerge(1);
 //        System.out.println(String.format("%s merged", directory.getClass().getSimpleName()));
         long writeEnd = System.currentTimeMillis();
-        System.out.println(String.format("Write for %s took %dms", directory.getClass().getSimpleName(), writeEnd-writeStart));
+        //System.out.println(String.format("Write for %s took %dms", directory.getClass().getSimpleName(), writeEnd-writeStart));
         
         // let's search!
         IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(writer, false));
@@ -141,14 +141,14 @@ public class Shakespeare {
             Query query = parser.parse(term);
             TopDocs docs = searcher.search(query, 10);
             long searchEnd = System.currentTimeMillis();
-            System.out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
+            //System.out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
             for (ScoreDoc doc : docs.scoreDocs) {
-                System.out.println(String.format("%d %.2f %d", doc.doc, doc.score, doc.shardIndex));
+                //System.out.println(String.format("%d %.2f %d", doc.doc, doc.score, doc.shardIndex));
             }
         }
         
         writer.close(true);
-        System.out.println(String.format("%s closed", directory.getClass().getSimpleName()));
+        //System.out.println(String.format("%s closed", directory.getClass().getSimpleName()));
         directory.close();
     }
 }
