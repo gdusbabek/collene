@@ -31,7 +31,6 @@ The good news is that there is a ton of low hanging performance fruit. Go for it
 
 ## TODOs and Bugs That I Know About
 
-1. Travis-CI builder.
 1. Clean up the column families. cmeta and clock could be combined if I ever figure out how to write an empty lock.
 1. Will need another column family that can store a collection of all the file names. I've noted somewhere else how it
    would be wise to break this out into N rows, rather than a single row.

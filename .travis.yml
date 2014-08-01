@@ -1,0 +1,15 @@
+language: java
+jdk:
+  - oraclejdk7
+  - openjdk7
+
+install:
+  - mvn install -Dmaven.test.skip
+
+script: 
+  - mvn verify --quiet
+
+notifications:
+  email:
+    recepients:
+      - gdusbabek@gmail.com
