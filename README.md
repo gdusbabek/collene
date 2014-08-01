@@ -19,15 +19,15 @@ Here are some things I know this will never be good at (if you're interested in 
 
 It is `collene.IO`. Implement that to talk to whatever column store you have. Then everything just works.
 
-I've included a `MemoryIO` implementation in testing (it works), and a `CassandraIO` that currently doesn't work very well.
+I've included a `MemoryIO` implementation in testing (it works), and a `CassandraIO`.
 
-## It Sucks, But It's Getting Better.
+## <strike>It Sucks, But</strike> It's Getting Better
 
 Lucene does a lot of tiny one-byte writes. <strike>This means performance will be poor because chances are that you need to
 first read a column before you apply the update.</strike> Collene batches IO for performance. This works well with 
 Lucene because semantically either a file exists, or it doesn't, and files are never modified.
 
-The good news is that there is a ton of low hanging performance fruit. Go for it.
+There is a ton of low hanging performance fruit. Go for it.
 
 ## TODOs and Bugs That I Know About
 
@@ -40,8 +40,8 @@ The good news is that there is a ton of low hanging performance fruit. Go for it
 
 ### Things that need to be verified or implemented and then verified
 
-1. Look at a way to implement `Directory.listAll()`, probably using a long row. (Let's face it, if this grows to
-   millions of entries, you have other problems.) After thinking about it for a bit, I want to use several long rows
+1. <strike>Look at a way to implement `Directory.listAll()`, probably using a long row. (Let's face it, if this grows to
+   millions of entries, you have other problems.) After thinking about it for a bit,</strike> I want to use several long rows
    and then read from all of them. This is a little way of sharding.
 1. Document retrieval.
 
