@@ -29,14 +29,15 @@ Lucene because semantically either a file exists, or it doesn't, and files are n
 
 The good news is that there is a ton of low hanging performance fruit. Go for it.
 
-## Bugs That I Know About
+## TODOs and Bugs That I Know About
 
-There were some here, but I fixed them.
-
+1. `TestIndexing` currently fails because the write lock cannot be obtained across invocations.
+1. Use Cassandra-unit for testing.
+1. Travis-CI builder.
 1. Clean up the column families. cmeta and clock could be combined if I ever figure out how to write an empty lock.
-2. Will need another column family that can store a collection of all the file names. I've noted somewhere else how it
-   would be wise to break this out into N rows, rather than a single row. 
-3. `TestIndexing` currently fails because the write lock cannot be obtained across invocations.
+1. Will need another column family that can store a collection of all the file names. I've noted somewhere else how it
+   would be wise to break this out into N rows, rather than a single row.
+1. Multi-directory writing and merging (without IO penalty).
 
 ## So Then...
 
@@ -49,7 +50,7 @@ There were some here, but I fixed them.
 
 ### Questions that might help me figure a few things out.
 
-1. When does a doc get its id. Could I store that in some other place to have quicker document retrieval?
+1. When does a doc get its id?. Could I store that in some other place to have quicker document retrieval?
 
 ### Things I haven't thought too deeply about, but may be a problem.
 
