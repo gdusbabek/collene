@@ -120,7 +120,9 @@ public class TestIndexing {
     public static void clearData() {
         cassandra.session.close();
         cassandra.cluster.close();
-        EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
+        // uses hector. let's not do this.
+        //EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
+        TestUtil.removeDirOnExit(new File("/tmp/collene"));
     }
     
     @Test

@@ -33,6 +33,15 @@ public class TestUtil {
         return f;
     }
     
+    public static void removeDirOnExit(File f) {
+        if (f.isDirectory()) {
+            for (File ch : f.listFiles()) {
+                removeDirOnExit(ch);
+            }
+        }
+        f.deleteOnExit();
+    }
+    
     public static void removeDir(File f) {
         if (f.isDirectory()) {
             for (File ch : f.listFiles()) {
