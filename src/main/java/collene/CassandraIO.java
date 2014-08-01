@@ -55,6 +55,7 @@ public class CassandraIO implements IO {
         this.prefixedKeyListKey = prefix(KEY_LIST_KEY);
     }
     
+    // connect to a cluster and build a session.
     public CassandraIO start(String addr) {
         try {
             cluster = Cluster.builder()
@@ -65,6 +66,13 @@ public class CassandraIO implements IO {
         } catch (UnknownHostException ex) {
             throw new RuntimeException(ex);
         }
+        return this;
+    }
+    
+    // use this active session.
+    public CassandraIO session(Session session) {
+        this.session = session;
+        this.cluster = session.getCluster();
         return this;
     }
     

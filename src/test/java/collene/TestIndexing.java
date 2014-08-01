@@ -16,6 +16,9 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
+import org.cassandraunit.CassandraCQLUnit;
+import org.cassandraunit.dataset.cql.ClassPathCQLDataSet;
+import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
@@ -34,6 +37,17 @@ public class TestIndexing {
     
     private Directory directory;
     
+    // chances are that I'm breaking rules trying to create a static CassandraCQLUnit instance. But this is how I got
+    // it to work. Also, it was important to me that I use the same cassandra database for each test.
+    public static CassandraCQLUnit cassandra = new CassandraCQLUnit(new ClassPathCQLDataSet("ddl.cql", "collene")) {{
+        try {
+            this.before();
+            this.load();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }};
+    
     @Parameterized.Parameters
     public static Collection<Object[]> data() throws Exception {
         Collection<Object[]> list = new ArrayList<Object[]>();
@@ -49,34 +63,45 @@ public class TestIndexing {
                 new MemoryIO(256)) };
         list.add(memColDirectory);
         
+        if (cassandra.session == null) {
+            throw new RuntimeException("cassandra-unit does not appear to be initialized");
+        }
+        
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
                 "casscol",
-                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cindex").start("127.0.0.1:9042"),
-                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cmeta").start("127.0.0.1:9042"),
-                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "clock").start("127.0.0.1:9042"))
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cindex").session(cassandra.session),
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cmeta").session(cassandra.session),
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "clock").session(cassandra.session))
         };
         list.add(cassColDirectory);
         
         Object[] splitRowDirectory = new Object[] { ColDirectory.open(
                 "casscolsplit",
-                new SplitRowIO(20, "/", new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cindex").start("127.0.0.1:9042")),
-                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cmeta").start("127.0.0.1:9042"),
-                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "clock").start("127.0.0.1:9042"))
+                new SplitRowIO(20, "/", new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cindex").session(cassandra.session)),
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "cmeta").session(cassandra.session),
+                new CassandraIO(NextCassandraPrefix.get(), 256, "collene", "clock").session(cassandra.session))
         };
         list.add(splitRowDirectory);
         
+        // todo: randomize list.
         return list;
     }
     
     public TestIndexing(Directory directory) {
         this.directory = directory;
     }
-    
+
     @AfterClass
     public static void clearDirectories() {
         TestUtil.removeDir(fsIndexDir);
     }
     
+    @AfterClass 
+    public static void clearData() {
+        cassandra.session.close();
+        cassandra.cluster.close();
+        EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
+    }
     
     @Test
     public void test() throws IOException, ParseException {
