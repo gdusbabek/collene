@@ -211,8 +211,7 @@ public class Freedb {
             IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(writer, false));
             QueryParser parser = new QueryParser(Version.LUCENE_4_9, "any", analyzer);
             long searchStart = System.currentTimeMillis();
-//            Query query = parser.parse("morrissey");
-            Query query = parser.parse("Dance");
+            Query query = parser.parse("morrissey");
             TopDocs docs = searcher.search(query, 10);
             long searchEnd = System.currentTimeMillis();
             out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
