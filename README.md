@@ -10,10 +10,8 @@ However, here are some problems this may get in the general direction of a solut
 1. A fully distributed Lucene index without sharding.
   * Really, this is a better fault-tolerance story than any existing open- or closed-source project that I know about.
 1. The ability to have an Lucene index whose size is greater than what is currently possible using a single machine.
-1. I also hope this exercise will satisfy my hope curiosity of knowing if there is anything better than ElasticSearch.
-
-Here are some things I know this will never be good at (if you're interested in these, please keep looking):
-1. Fully distributed index building and data ingestion. This will never be possible without resorting to sharding.
+1. I also hope this exercise will satisfy my hope curiosity of knowing if there is anything better than ElasticSearch
+   and Solr.
 
 ## Primary Interface
 
