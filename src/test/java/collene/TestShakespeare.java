@@ -108,7 +108,14 @@ public class TestShakespeare {
                 return !pathname.isHidden();
             }
         });
+     
+        Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_4_9);
+        IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_4_9, analyzer);
+        config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
+        IndexWriter writer = new IndexWriter(directory, config);
         
+        final int flushLines = 200;
+        int totalLines = 0;
         Collection<Document> documents = new ArrayList<Document>();
         for (File f : files) {
             String play = f.getName();
@@ -124,25 +131,25 @@ public class TestShakespeare {
                 doc.add(new Field("content", line, TextField.TYPE_STORED));
                 documents.add(doc);
                 
+                totalLines += 1;
+                if (totalLines % flushLines == 0) {
+                    writer.addDocuments(documents);
+                    documents.clear();
+                }
+                
                 lineNumber += 1;
                 line = reader.readLine();
             }
             reader.close();
         }
         
-        long writeStart = System.currentTimeMillis();
-        Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_4_9);
-        IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_4_9, analyzer);
-        config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-        IndexWriter writer = new IndexWriter(directory, config);
-        writer.addDocuments(documents);
-        //System.out.println(String.format("%s %d documents added", directory.getClass().getSimpleName(), documents.size()));
-        writer.commit();
+        if (documents.size() > 0) {
+            writer.addDocuments(documents);
+        }
+        
         //System.out.println(String.format("%s committed", directory.getClass().getSimpleName()));
 //        writer.forceMerge(1);
 //        System.out.println(String.format("%s merged", directory.getClass().getSimpleName()));
-        long writeEnd = System.currentTimeMillis();
-        //System.out.println(String.format("Write for %s took %dms", directory.getClass().getSimpleName(), writeEnd-writeStart));
         
         // let's search!
         IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(writer, false));

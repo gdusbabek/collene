@@ -118,16 +118,16 @@ public class CassandraIO implements IO {
     public void put(String key, long col, byte[] value) throws IOException {
         boolean needsKeyRowUpdate = keyCache.add(key);
         ensureSession();
-        key = prefix(key);
+        String prefixedKey = prefix(key);
         BatchStatement batch = new BatchStatement();
         PreparedStatement stmt = session.prepare(String.format("insert into %s.%s (key, name, value) values(?, ?, ?);", keyspace, index));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
-        batch.add(bndStmt.bind(key, col, ByteBuffer.wrap(value)));
+        batch.add(bndStmt.bind(prefixedKey, col, ByteBuffer.wrap(value)));
         
         if (needsKeyRowUpdate) {
             stmt = session.prepare(String.format("insert into %s.%s (key, name, value) values (?, ?, ?);", keyspace, index));
             bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
-            batch.add(bndStmt.bind(prefixedKeyListKey, (long)key.hashCode(), ByteBuffer.wrap(key.getBytes(Charsets.UTF_8))));
+            batch.add(bndStmt.bind(prefixedKeyListKey, (long)prefixedKey.hashCode(), ByteBuffer.wrap(prefixedKey.getBytes(Charsets.UTF_8))));
         }
         
         session.execute(batch);
@@ -136,10 +136,10 @@ public class CassandraIO implements IO {
     @Override
     public byte[] get(String key, long col) throws IOException {
         ensureSession();
-        key = prefix(key);
+        String prefixedKey = prefix(key);
         PreparedStatement stmt = session.prepare(String.format("select value from %s.%s where key = ? and name = ?", keyspace, index));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
-        ResultSet rs = session.execute(bndStmt.bind(key, col));
+        ResultSet rs = session.execute(bndStmt.bind(prefixedKey, col));
         Row row = rs.one();
         if (row == null) {
             return null;
@@ -181,16 +181,16 @@ public class CassandraIO implements IO {
     @Override
     public void delete(String key) throws IOException {
         ensureSession();
-        key = prefix(key);
+        String prefixedKey = prefix(key);
         BatchStatement delBatch = new BatchStatement();
         
         PreparedStatement stmt = session.prepare(String.format("delete from %s.%s where key = ?", keyspace, index));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
-        delBatch = delBatch.add(bndStmt.bind(key));
+        delBatch = delBatch.add(bndStmt.bind(prefixedKey));
         
         stmt = session.prepare(String.format("delete from %s.%s where key = ? and name = ?", keyspace, index));
         bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
-        delBatch = delBatch.add(bndStmt.bind(prefixedKeyListKey, (long)prefixedKeyListKey.hashCode()));
+        delBatch = delBatch.add(bndStmt.bind(prefixedKeyListKey, (long)prefixedKey.hashCode()));
         
         session.execute(delBatch);
         

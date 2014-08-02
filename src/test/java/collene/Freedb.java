@@ -51,11 +51,11 @@ public class Freedb {
     private static final int BATCH_SIZE = 10;
     private static final boolean VERBOSE = false;
     private static PrintStream out = System.out;
-    private static final String name = "freedb.cass";
+    private static final String name = "freedb.cass.test";
     
     public static void main(String args[]) throws Exception {
-        dumpGenres(args);
-        System.exit(0);
+        //dumpGenres(args);
+        //System.exit(0);
         
         try {
             BuildIndex(args);
@@ -99,8 +99,14 @@ public class Freedb {
     public static void DoSearch(String[] args) throws Exception {
         Directory directory = ColDirectory.open(
                 name,
-                new CassandraIO(NextCassandraPrefix.get(), 8192, "collene", "cindex").start("127.0.0.1:9042")
+                new CassandraIO(name, 8192, "collene", "cindex").start("127.0.0.1:9042")
         );
+        
+        out.println("I think these are the files:");
+        for (String s : directory.listAll()) {
+            out.println(s);
+        }
+        
         IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(directory));
         Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_4_9);
         QueryParser parser = new QueryParser(Version.LUCENE_4_9, "any", analyzer);
@@ -120,7 +126,6 @@ public class Freedb {
             out.println(String.format("Document lookup took %d ms for %d documents", lookupEnd-lookupStart, docs.scoreDocs.length));
         }
         
-        
         directory.close();
     }
     
@@ -128,7 +133,7 @@ public class Freedb {
         String freedbPath = "/Users/gdusbabek/Downloads/freedb-complete-20140701.tar.bz2";
         Directory directory = ColDirectory.open(
                 name,
-                new CassandraIO(NextCassandraPrefix.get(), 8192, "collene", "cindex").start("127.0.0.1:9042")
+                new CassandraIO(name, 8192, "collene", "cindex").start("127.0.0.1:9042")
         );
 
         FreeDbReader reader = new FreeDbReader(new File(freedbPath), 50000);
@@ -218,10 +223,6 @@ public class Freedb {
         
         long indexTime = System.currentTimeMillis() - indexStart;
         out.println(String.format("Indexed %d things in %d ms", count, indexTime));
-        
-        out.println("Committing " + System.currentTimeMillis());
-        writer.commit();
-        out.println("Done committing " + System.currentTimeMillis());
         
 //        long startMerge = System.currentTimeMillis();
 //        writer.forceMerge(1, true);

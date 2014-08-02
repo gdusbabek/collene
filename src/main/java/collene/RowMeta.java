@@ -60,17 +60,25 @@ public class RowMeta {
             assert buf.length == 8;
             io.put(prefix(key), ROW_LENGTH_COL, buf);
         } else {
-            dirty.add(key);
+            synchronized (dirty) {
+                dirty.add(key);
+            }
         }
     }
     
     public void flush(boolean clear) throws IOException {
-        for (String key : dirty) {
-            io.put(prefix(key), ROW_LENGTH_COL, Utils.longToBytes(cache.get(key)));
+        Set<String> tempDirty = new HashSet<>(dirty);
+        for (String key : tempDirty) {
+            Long v = cache.get(key);
+            if (v != null) {
+                io.put(prefix(key), ROW_LENGTH_COL, Utils.longToBytes(v));
+            }
         }
         if (clear) {
             cache.clear();
-            dirty.clear();
+            synchronized (dirty) {
+                dirty.removeAll(tempDirty);
+            }
         }
     }
     
