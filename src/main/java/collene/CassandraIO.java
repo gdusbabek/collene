@@ -71,6 +71,13 @@ public class CassandraIO implements IO {
         this.prefixedKeyListKey = prefix(KEY_LIST_KEY);
     }
     
+    public CassandraIO clone(String newRowPrefix) {
+        CassandraIO io = new CassandraIO(newRowPrefix, columnSize, keyspace, index);
+        io.session = this.session;
+        io.cluster = this.cluster;
+        return io;
+    }
+    
     // connect to a cluster and build a session.
     public CassandraIO start(String addr) {
         try {
@@ -161,16 +168,12 @@ public class CassandraIO implements IO {
         PreparedStatement stmt = session.prepare(String.format("select value from %s.%s where key = ?", keyspace, index));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
         ResultSet rs = session.execute(bndStmt.bind(prefixedKeyListKey));
-        Row row = rs.one();
-        if (row == null) {
-            return new String[]{};
-        } else {
-            String[] keys = new String[row.getColumnDefinitions().size()];
-            for (int i = 0; i < keys.length; i++) {
-                keys[i] = toString(row.getBytes(i));
-            }
-            return keys;
+        
+        List<String> keys = new ArrayList<>();
+        for (Row row : rs.all()) {
+            keys.add(unprefix(toString(row.getBytes(0))));
         }
+        return keys.toArray(new String[keys.size()]);
     }
     
     private static String toString(ByteBuffer bb) throws CharacterCodingException {
@@ -204,6 +207,10 @@ public class CassandraIO implements IO {
     }
     
     private String prefix(String key) {
-        return String.format("%s_%s", rowPrefix, key);
+        return String.format("%s/%s", rowPrefix, key);
+    }
+    
+    private String unprefix(String prefixedKey) {
+        return prefixedKey.split("/", -1)[1];
     }
 }
