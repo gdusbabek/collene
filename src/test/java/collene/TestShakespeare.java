@@ -162,14 +162,20 @@ public class TestShakespeare {
             Query query = parser.parse(term);
             TopDocs docs = searcher.search(query, 10);
             long searchEnd = System.currentTimeMillis();
-            //System.out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
+            System.out.println(String.format("%s %d total hits in %d", directory.getClass().getSimpleName(), docs.totalHits, searchEnd - searchStart));
             for (ScoreDoc doc : docs.scoreDocs) {
-                //System.out.println(String.format("%d %.2f %d", doc.doc, doc.score, doc.shardIndex));
+                System.out.println(String.format("%d %.2f %d", doc.doc, doc.score, doc.shardIndex));
             }
         }
         
         writer.close(true);
         //System.out.println(String.format("%s closed", directory.getClass().getSimpleName()));
+        
+        System.out.println("I think these are the files:");
+        for (String s : directory.listAll()) {
+            System.out.println(s);
+        }
+        
         directory.close();
     }
 }
