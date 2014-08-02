@@ -30,7 +30,8 @@ There is a ton of low hanging performance fruit. Go for it.
 ## TODOs and Bugs That I Know About
 
 1. File listing at the end of a big index job looks wrong. Like prefixes aren't being removed on some layer. Also, file
-   listing shouldn't show things like meta rows.
+   listing shouldn't show things like meta rows and prefixes for anything besides the lock file.
+1. Test document deletion and observe performance.
 1. Multi-directory writing and merging.
 1. Multi-directory merging (without IO penalty).
 
