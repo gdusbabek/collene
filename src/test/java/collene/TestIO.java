@@ -20,8 +20,8 @@ import java.util.Set;
 public class TestIO {
     private static final boolean isTravis = System.getenv().containsKey("TRAVIS") && System.getenv().get("TRAVIS").equals("true");
     private static final Random rand = new Random(System.nanoTime());
-    private static final int rows = 100;
-    private static final int cols = 100;
+    private static final int rows = 50;
+    private static final int cols = 50;
     
     public static CassandraCQLUnit cassandra = new CassandraCQLUnit(new ClassPathCQLDataSet("ddl.cql", "collene"), "/cassandra.yaml", "127.0.0.1", 9042) {{
         try {
@@ -68,6 +68,7 @@ public class TestIO {
             byte[] readData = io.get(Integer.toHexString(row), (long)col);
             Assert.assertArrayEquals(data[row][col], readData);
         }
+        System.out.print(".");
     }
     
     @Test
@@ -85,6 +86,7 @@ public class TestIO {
             Assert.assertArrayEquals(newData, newReadData);
             assertArrayNotEqual(newReadData, oldReadData);
         }
+        System.out.print(".");
     }
     
     @Test
@@ -96,6 +98,7 @@ public class TestIO {
             Assert.assertTrue(io.hasKey(goodRow));
             Assert.assertFalse(io.hasKey(badRow));
         }
+        System.out.print(".");
     }
     
     @Test
@@ -144,6 +147,7 @@ public class TestIO {
             Assert.assertNull(deadData);
             Assert.assertFalse(io.hasKey(deadKey));
         }
+        System.out.print(".");
     }
     
     @Test
@@ -165,6 +169,7 @@ public class TestIO {
             
             existing -= 1;
         }
+        System.out.print(".");
     }
     
     @Test
@@ -188,6 +193,12 @@ public class TestIO {
         Assert.assertTrue(rows * cols > 0);
         Assert.assertEquals(allValues.size(), dbAllValues.size());
         Assert.assertEquals(0, Sets.difference(allValues, dbAllValues).size());
+        System.out.print(".");
+    }
+    
+    @Test
+    public void ok() {
+        System.out.println("ok");
     }
     
     private static void assertArrayNotEqual(byte[] a, byte[] b) {
