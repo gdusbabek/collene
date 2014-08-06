@@ -54,8 +54,8 @@ public class TestIO {
         }
         
         // caching IOs need to be flushed in order to see writes.
-        if (io instanceof CachingCompositeIO) {
-            ((CachingCompositeIO) io).flush(true);
+        if (io instanceof CachingIO) {
+            ((CachingIO) io).flush(true);
         }
     }
     
@@ -222,12 +222,12 @@ public class TestIO {
                 new MemoryIO(8192),
                 new MemoryIO(4096),
                 new SplitRowIO(256, ",", new MemoryIO(1024)),
-                new CachingCompositeIO(new MemoryIO(1024)),
+                new CachingIO(new MemoryIO(1024)),
                 
                 // note that we turn autoflush on for this CCIO instance. It's required, else no puts are recorded in
                 // the backing IO.
-                new SplitRowIO(256, ",", new CachingCompositeIO(new MemoryIO(1024), true)),
-                new CachingCompositeIO(new SplitRowIO(256, ",", new MemoryIO(1024))),
+                new SplitRowIO(256, ",", new CachingIO(new MemoryIO(1024), true)),
+                new CachingIO(new SplitRowIO(256, ",", new MemoryIO(1024))),
                 
                 // run the same test multiple times with the same cassandra database, keyspace and column family. Only change
                 // the prefix. All data should still reside on the database at the end, but should be properly namespaced to
@@ -238,7 +238,7 @@ public class TestIO {
                 
                 // mix things up.
                 new SplitRowIO(256, ",", parentIO.clone(NextCassandraPrefix.get())),
-                new CachingCompositeIO(parentIO.clone(NextCassandraPrefix.get())),
+                new CachingIO(parentIO.clone(NextCassandraPrefix.get())),
         };
         
         for (IO io : ios) {

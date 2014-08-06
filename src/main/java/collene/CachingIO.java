@@ -30,7 +30,7 @@ import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
 
-public class CachingCompositeIO implements IO {
+public class CachingIO implements IO {
     private final IO io;
     private final boolean autoFlush;
     
@@ -45,11 +45,11 @@ public class CachingCompositeIO implements IO {
             }
     );
     
-    public CachingCompositeIO(IO io) {
+    public CachingIO(IO io) {
         this(io, false);
     }
     
-    public CachingCompositeIO(IO io, boolean autoFlush) {
+    public CachingIO(IO io, boolean autoFlush) {
         this.io = io;
         this.autoFlush = autoFlush;
     }

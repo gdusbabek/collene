@@ -27,7 +27,7 @@ public class RowReader {
     
     public RowReader(String key, IO io, RowMeta meta) {
         this.key = key;
-        this.io = new CachingCompositeIO(io);
+        this.io = new CachingIO(io);
         this.meta = meta;
     }
     

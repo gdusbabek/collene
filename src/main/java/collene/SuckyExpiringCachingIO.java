@@ -38,7 +38,7 @@ import com.google.common.collect.Sets;
  * is the case early on. I'm keeping this around for a while, until I come up with something better, but I'm not
  * going to use it.
  * 
- * Can be used in place of CachingCompositeIO
+ * Can be used in place of CachingIO
  */
 public class SuckyExpiringCachingIO implements IO {
     private static final byte[] NULL_SENTINAL = new byte[]{0};

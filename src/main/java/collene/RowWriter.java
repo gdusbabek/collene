@@ -21,12 +21,12 @@ import java.io.IOException;
 
 public class RowWriter {
     private final String key;
-    private final CachingCompositeIO io;
+    private final CachingIO io;
     private final RowMeta meta;
     
     public RowWriter(String key, IO io, RowMeta meta) {
         this.key = key;
-        this.io = new CachingCompositeIO(io);
+        this.io = new CachingIO(io);
         this.meta = meta;
     }
     
