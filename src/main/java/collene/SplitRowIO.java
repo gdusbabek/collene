@@ -17,7 +17,9 @@
 package collene;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class SplitRowIO implements IO {
@@ -54,6 +56,20 @@ public class SplitRowIO implements IO {
     }
 
     @Override
+    public Iterable<byte[]> allValues(String key) throws IOException {
+        List<byte[]> list = new ArrayList<byte[]>();
+        for (long mod = 0; mod < splits; mod++) {
+            list.addAll(Utils.asCollection(io.allValues(dbKey(key, mod))));
+        }
+        return list;
+    }
+
+    @Override
+    public void delete(String key, long col) throws IOException {
+        io.delete(dbKey(key, col), col);
+    }
+
+    @Override
     public boolean hasKey(String key) throws IOException {
         for (long mod = 0; mod < splits; mod++) {
             if (io.hasKey(dbKey(key, mod))) {
@@ -61,16 +77,6 @@ public class SplitRowIO implements IO {
             }
         }
         return false;
-    }
-
-    @Override
-    public String[] allKeys() throws IOException {
-        Set<String> allKeys = new HashSet<String>();
-        for (String augmentedKey : io.allKeys()) {
-            String[] parts = augmentedKey.split(delimiter, -1);
-            allKeys.add(parts[0]);
-        }
-        return allKeys.toArray(new String[allKeys.size()]);
     }
     
     private String dbKey(String key, long col) {

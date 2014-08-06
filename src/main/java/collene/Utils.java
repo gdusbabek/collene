@@ -16,6 +16,10 @@
 
 package collene;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 public class Utils {
     
     public static long bytesToLong(byte[] buf) {
@@ -40,5 +44,13 @@ public class Utils {
         buf[6] = (byte)(l >>> 8);
         buf[7] = (byte)(l >>> 0);
         return buf;
+    }
+    
+    public static <T> Collection<T> asCollection(Iterable<T> it) {
+        List<T> list = new ArrayList<T>();
+        for (T t : it) {
+            list.add(t);
+        }
+        return list;
     }
 }

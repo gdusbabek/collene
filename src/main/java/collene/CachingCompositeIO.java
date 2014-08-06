@@ -72,8 +72,9 @@ public class CachingCompositeIO implements IO {
     }
 
     @Override
-    public String[] allKeys() throws IOException {
-        return io.allKeys();
+    public Iterable<byte[]> allValues(String key) throws IOException {
+        // no caching here because the column names are filtered.
+        return io.allValues(key);
     }
 
     @Override
@@ -87,6 +88,17 @@ public class CachingCompositeIO implements IO {
         needsFlush.removeAll(key);
         
         io.delete(key);
+    }
+
+    @Override
+    public void delete(String key, long col) throws IOException {
+        cache.remove(key, col);
+        if (cache.row(key).size() == 0) {
+            needsFlush.removeAll(key);
+            io.delete(key);
+        } else {
+            io.delete(key, col);
+        }
     }
 
     @Override

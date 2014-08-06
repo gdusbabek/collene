@@ -24,31 +24,24 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
-import com.google.common.base.Charsets;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetDecoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public class CassandraIO implements IO {
-    // special row key used to store all keys. todo: obvious consistency problems. I think we mostly get around this in
-    // lucene by knowing that a particular Directory instnace only operates on a subset of the keys.
-    private static final String KEY_LIST_KEY = "__COLLENE_KEY_LIST_KEY__";
     private final int columnSize;
     private final String keyspace;
     private final String index;
     private final String rowPrefix;
-    private final String prefixedKeyListKey;
     
     private Cluster cluster;
     private Session session = null;
@@ -56,19 +49,11 @@ public class CassandraIO implements IO {
     // no attempt to make consistent. races are entirely possible. deal with it for now.
     private Set<String> keyCache = new HashSet<>();
     
-    private static final ThreadLocal<CharsetDecoder> decoders = new ThreadLocal<CharsetDecoder>() {
-        @Override
-        protected CharsetDecoder initialValue() {
-            return Charsets.UTF_8.newDecoder();
-        }
-    };
-    
     public CassandraIO(String rowPrefix, int columnSize, String keyspace, String index) {
         this.columnSize = columnSize;
         this.keyspace = keyspace;
         this.index = index;
         this.rowPrefix = rowPrefix;
-        this.prefixedKeyListKey = prefix(KEY_LIST_KEY);
     }
     
     public CassandraIO clone(String newRowPrefix) {
@@ -123,20 +108,12 @@ public class CassandraIO implements IO {
     
     @Override
     public void put(String key, long col, byte[] value) throws IOException {
-        boolean needsKeyRowUpdate = keyCache.add(key);
         ensureSession();
         String prefixedKey = prefix(key);
         BatchStatement batch = new BatchStatement();
         PreparedStatement stmt = session.prepare(String.format("insert into %s.%s (key, name, value) values(?, ?, ?);", keyspace, index));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
         batch.add(bndStmt.bind(prefixedKey, col, ByteBuffer.wrap(value)));
-        
-        if (needsKeyRowUpdate) {
-            stmt = session.prepare(String.format("insert into %s.%s (key, name, value) values (?, ?, ?);", keyspace, index));
-            bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
-            batch.add(bndStmt.bind(prefixedKeyListKey, (long)prefixedKey.hashCode(), ByteBuffer.wrap(prefixedKey.getBytes(Charsets.UTF_8))));
-        }
-        
         session.execute(batch);
     }
 
@@ -158,29 +135,46 @@ public class CassandraIO implements IO {
     }
 
     @Override
-    public int getColSize() {
-        return columnSize;
+    public Iterable<byte[]> allValues(String key) throws IOException {
+        ensureSession();
+        String prefixedKey = prefix(key);
+        PreparedStatement stmt = session.prepare(String.format("select value from %s.%s where key = ?", keyspace, index));
+        BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
+        ResultSet rs = session.execute(bndStmt.bind(prefixedKey));
+        List<byte[]> values = new ArrayList<byte[]>();
+        for (Row row : rs.all()) {
+            values.add(toBytes(row.getBytes(0)));
+        }
+        return values;
+    }
+    
+    // copied from org.apache.cassandra.utils.ByteBufferUtil.getArray(ByteBuffer).  
+    /**
+     * You should almost never use this.  Instead, use the write* methods to avoid copies.
+     */
+    private byte[] toBytes(ByteBuffer buffer) {
+        int length = buffer.remaining();
+
+        if (buffer.hasArray())
+        {
+            int boff = buffer.arrayOffset() + buffer.position();
+            if (boff == 0 && length == buffer.array().length)
+                return buffer.array();
+            else
+                return Arrays.copyOfRange(buffer.array(), boff, boff + length);
+        }
+        // else, DirectByteBuffer.get() is the fastest route
+        byte[] bytes = new byte[length];
+        buffer.duplicate().get(bytes);
+
+        return bytes;
     }
 
     @Override
-    public String[] allKeys() throws IOException {
-        ensureSession();
-        PreparedStatement stmt = session.prepare(String.format("select value from %s.%s where key = ?", keyspace, index));
-        BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
-        ResultSet rs = session.execute(bndStmt.bind(prefixedKeyListKey));
-        
-        List<String> keys = new ArrayList<>();
-        for (Row row : rs.all()) {
-            keys.add(unprefix(toString(row.getBytes(0))));
-        }
-        return keys.toArray(new String[keys.size()]);
+    public int getColSize() {
+        return columnSize;
     }
     
-    private static String toString(ByteBuffer bb) throws CharacterCodingException {
-        CharBuffer cb = decoders.get().decode(bb.duplicate());
-        return cb.toString();
-    }
-
     @Override
     public void delete(String key) throws IOException {
         ensureSession();
@@ -191,13 +185,18 @@ public class CassandraIO implements IO {
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
         delBatch = delBatch.add(bndStmt.bind(prefixedKey));
         
-        stmt = session.prepare(String.format("delete from %s.%s where key = ? and name = ?", keyspace, index));
-        bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
-        delBatch = delBatch.add(bndStmt.bind(prefixedKeyListKey, (long)prefixedKey.hashCode()));
-        
         session.execute(delBatch);
         
         keyCache.remove(key);
+    }
+
+    @Override
+    public void delete(String key, long col) throws IOException {
+        ensureSession();
+        String prefixedKey = prefix(key);
+        PreparedStatement stmt = session.prepare(String.format("delete from %s.%s where key = ? and name = ?", keyspace, index));
+        BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
+        session.execute(bndStmt.bind(prefixedKey, col));
     }
 
     @Override
@@ -208,9 +207,5 @@ public class CassandraIO implements IO {
     
     private String prefix(String key) {
         return String.format("%s/%s", rowPrefix, key);
-    }
-    
-    private String unprefix(String prefixedKey) {
-        return prefixedKey.split("/", -1)[1];
     }
 }

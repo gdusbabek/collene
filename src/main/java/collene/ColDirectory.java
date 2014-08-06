@@ -47,8 +47,8 @@ public class ColDirectory extends Directory {
         lockFactory.setLockPrefix(name);
     }
 
-    public static ColDirectory open(String name, IO indexIO) {
-        return new ColDirectory(name, indexIO, new RowMeta(indexIO), new IoLockFactory(indexIO));    
+    public static ColDirectory open(String name, IO indexIO, IO metaIO) {
+        return new ColDirectory(name, indexIO, new RowMeta(metaIO), new IoLockFactory(indexIO));    
     }
     
     /**
@@ -56,7 +56,7 @@ public class ColDirectory extends Directory {
      */
     @Override
     public String[] listAll() throws IOException {
-        return indexIO.allKeys();
+        return meta.allKeys();
     }
 
     @Override

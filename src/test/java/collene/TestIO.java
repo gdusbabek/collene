@@ -1,5 +1,6 @@
 package collene;
 
+import com.google.common.collect.Sets;
 import org.cassandraunit.CassandraCQLUnit;
 import org.cassandraunit.dataset.cql.ClassPathCQLDataSet;
 import org.junit.Assert;
@@ -51,12 +52,6 @@ public class TestIO {
                 io.put(Integer.toHexString(r), (long)c, data[r][c]);
             }
         }
-    }
-    
-    @Test
-    public void testAllKeys() throws IOException {
-        String[] allKeys = io.allKeys();
-        Assert.assertEquals(rows, allKeys.length);
     }
     
     @Test
@@ -146,6 +141,50 @@ public class TestIO {
         }
     }
     
+    @Test
+    public void testDeleteRowAndColumn() throws IOException {
+        int existing = 1000;
+        while (existing > 0) {
+            String candidateKey = Integer.toHexString(rand.nextInt(rows));
+            long candidateCol = (long)rand.nextInt(cols);
+            if (!io.hasKey(candidateKey)) {
+                continue;
+            }
+            if (io.get(candidateKey, candidateCol) == null) {
+                continue;
+            }
+            
+            Assert.assertNotNull(io.get(candidateKey, candidateCol));
+            io.delete(candidateKey, candidateCol);
+            Assert.assertNull(io.get(candidateKey, candidateCol));
+            
+            existing -= 1;
+        }
+    }
+    
+    @Test
+    public void testAllValues() throws IOException {
+        Set<String> allValues = new HashSet<String>();
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                allValues.add(new String(data[r][c]));
+            }
+        }
+        
+        // will blow up here if we have the misfortune of a string collision.
+        Assert.assertEquals("Likely random string collision", rows * cols, allValues.size());
+        
+        Set<String> dbAllValues = new HashSet<String>();
+        for (int r = 0; r < rows; r++) {
+            for (byte[] bb : io.allValues(Integer.toHexString(r))) {
+                dbAllValues.add(new String(bb));
+            }
+        }
+        Assert.assertTrue(rows * cols > 0);
+        Assert.assertEquals(allValues.size(), dbAllValues.size());
+        Assert.assertEquals(0, Sets.difference(allValues, dbAllValues).size());
+    }
+    
     private static void assertArrayNotEqual(byte[] a, byte[] b) {
         if (a.length == b.length) {
             for (int i = 0; i < a.length; i++) {
@@ -181,6 +220,8 @@ public class TestIO {
         list.add(new Object[]{
                 parentIO.clone(NextCassandraPrefix.get())
         });
+        
+        // todo: Need to test SplitRowIO and CachingCompositeIO.
         
         return list;
     }

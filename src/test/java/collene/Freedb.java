@@ -52,6 +52,7 @@ public class Freedb {
     private static final boolean VERBOSE = false;
     private static PrintStream out = System.out;
     private static final String name = "freedb.cass.test";
+    private static final String metaName = name + ".meta";
     
     public static void main(String args[]) throws Exception {
         //dumpGenres(args);
@@ -97,9 +98,11 @@ public class Freedb {
     }
     
     public static void DoSearch(String[] args) throws Exception {
+        CassandraIO baseIO = new CassandraIO(name, 8192, "collene", "cindex").start("127.0.0.1:9042");
         Directory directory = ColDirectory.open(
                 name,
-                new CassandraIO(name, 8192, "collene", "cindex").start("127.0.0.1:9042")
+                baseIO,
+                baseIO.clone(metaName)
         );
         
         out.println("I think these are the files:");
@@ -131,9 +134,12 @@ public class Freedb {
     
     public static void BuildIndex(String[] args) throws Exception {
         String freedbPath = "/Users/gdusbabek/Downloads/freedb-complete-20140701.tar.bz2";
+        
+        CassandraIO baseIO = new CassandraIO(name, 8192, "collene", "cindex").start("127.0.0.1:9042");
         Directory directory = ColDirectory.open(
                 name,
-                new CassandraIO(name, 8192, "collene", "cindex").start("127.0.0.1:9042")
+                baseIO,
+                baseIO.clone(metaName)
         );
 
         FreeDbReader reader = new FreeDbReader(new File(freedbPath), 50000);

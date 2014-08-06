@@ -16,9 +16,15 @@
 
 package collene;
 
+import com.google.common.base.Charsets;
+
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharsetDecoder;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,13 +35,25 @@ public class RowMeta {
     private static final long ROW_LENGTH_COL = 0;
     private static final String ROW_PREFIX = "__COLLENE_META_ROW_PREFIX__";
     
+    // special row key used to store all keys. todo: obvious consistency problems. I think we mostly get around this in
+    // lucene by knowing that a particular Directory instnace only operates on a subset of the keys.
+    private static final String KEY_LIST_KEY = "__COLLENE_KEY_LIST_KEY__";
+
+    private static final ThreadLocal<CharsetDecoder> decoders = new ThreadLocal<CharsetDecoder>() {
+        @Override
+        protected CharsetDecoder initialValue() {
+            return Charsets.UTF_8.newDecoder();
+        }
+    };
     
     private final IO io;
     private final Map<String, Long> cache = new HashMap<String, Long>();
     private final Set<String> dirty = new HashSet<String>();
+    private final String fileNamesListKey;
     
     public RowMeta(IO io) {
         this.io = io;
+        fileNamesListKey = prefix(KEY_LIST_KEY);
     }
     
     public long getLength(String key) throws IOException {
@@ -70,8 +88,10 @@ public class RowMeta {
         Set<String> tempDirty = new HashSet<>(dirty);
         for (String key : tempDirty) {
             Long v = cache.get(key);
+            String prefixedKey = prefix(key);
             if (v != null) {
                 io.put(prefix(key), ROW_LENGTH_COL, Utils.longToBytes(v));
+                io.put(fileNamesListKey, prefixedKey.hashCode(), prefixedKey.getBytes(Charsets.UTF_8));
             }
         }
         if (clear) {
@@ -83,10 +103,27 @@ public class RowMeta {
     }
     
     public void delete(String key) throws IOException {
-        io.delete(prefix(key));
+        String prefixedKey = prefix(key);
+        io.delete(prefixedKey);
+        io.delete(fileNamesListKey, prefixedKey.hashCode());
+        
     }
     
     private static String prefix(String key) {
-        return String.format("%s.%s", ROW_PREFIX, key);
+        return String.format("%s/%s", ROW_PREFIX, key);
+    }
+    
+    private String unprefix(String prefixedKey) {
+        return prefixedKey.split("/", -1)[1];
+    }
+    
+    public String[] allKeys() throws IOException {
+        List<String> keys = new ArrayList<String>();
+        for (byte[] bb : io.allValues(fileNamesListKey)) {
+            // todo: need to benchmark the various approaches here in a concurrent environment.
+            //keys.add(unprefix(new String(bb, Charsets.UTF_8)));
+            keys.add(unprefix(decoders.get().decode(ByteBuffer.wrap(bb)).toString()));
+        }
+        return keys.toArray(new String[keys.size()]);
     }
 }

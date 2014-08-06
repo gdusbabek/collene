@@ -45,14 +45,13 @@ public class MemoryIO implements IO {
     }
 
     @Override
-    public int getColSize() {
-        return colSize;
+    public Iterable<byte[]> allValues(String key) throws IOException {
+        return data.row(key).values();
     }
 
     @Override
-    public String[] allKeys() throws IOException {
-        Set<String> keys = data.rowKeySet();
-        return keys.toArray(new String[keys.size()]);
+    public int getColSize() {
+        return colSize;
     }
 
     @Override
@@ -63,6 +62,11 @@ public class MemoryIO implements IO {
         for (long col : cols) {
             data.remove(key, col);
         }
+    }
+
+    @Override
+    public void delete(String key, long col) throws IOException {
+        data.remove(key, col);
     }
 
     @Override

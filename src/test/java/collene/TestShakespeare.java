@@ -78,12 +78,15 @@ public class TestShakespeare {
         
         Object[] memColDirectory = new Object[] { ColDirectory.open(
                 "shakespeare.mem",
+                new MemoryIO(4096),
                 new MemoryIO(4096)) };
         list.add(memColDirectory);
         
+        CassandraIO baseCassandraIO = new CassandraIO(NextCassandraPrefix.get(), 8192, "collene", "cindex").session(cassandra.session);
         Object[] cassColDirectory = new Object[] { ColDirectory.open(
                 "shakespeare.cass",
-                new CassandraIO(NextCassandraPrefix.get(), 8192, "collene", "cindex").session(cassandra.session))
+                baseCassandraIO,
+                baseCassandraIO.clone(NextCassandraPrefix.get()).session(cassandra.session))
         };
         list.add(cassColDirectory);
         
