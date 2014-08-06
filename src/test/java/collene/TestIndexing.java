@@ -34,7 +34,6 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
 import org.cassandraunit.CassandraCQLUnit;
 import org.cassandraunit.dataset.cql.ClassPathCQLDataSet;
-import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
@@ -153,13 +152,27 @@ public class TestIndexing {
         
         Query query = parser.parse("aaa_4");
         TopDocs docs = searcher.search(query, 1);
+        int idToDelete = docs.scoreDocs[0].doc;
         Assert.assertTrue(docs.totalHits > 0);
         
         query = parser.parse("fersoius");
         docs = searcher.search(query, 1);
         Assert.assertFalse(docs.totalHits > 0);
         
+        // delete that document.
+        DirectoryReader reader = DirectoryReader.open(writer, true);
+        writer.tryDeleteDocument(reader, idToDelete);
+        
+        reader.close();
         writer.close();
+        
+        reader = DirectoryReader.open(directory);
+        searcher = new IndexSearcher(reader);
+        query = parser.parse("aaa_4");
+        docs = searcher.search(query, 1);
+        reader.close();
+        Assert.assertFalse(docs.totalHits > 0);
+        
         directory.close();
     }
 }
