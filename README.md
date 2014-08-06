@@ -13,11 +13,14 @@ However, here are some problems this may get in the general direction of a solut
 1. I also hope this exercise will satisfy my hope curiosity of knowing if there is anything better than ElasticSearch
    and Solr.
 
-## Primary Interface
+## Primary Interfaces
 
-It is `collene.IO`. Implement that to talk to whatever column store you have. Then everything just works.
-
+The main implementational interface is `collene.IO`. 
+Implement that to talk to whatever column store you have. Then everything just works.
 I've included a `MemoryIO` implementation in testing (it works), and a `CassandraIO`.
+
+The main search interface is `collene.ColDirectory`. Use it where you would normally have used an 
+`org.apache.lucene.index.Directory`.
 
 ## <strike>It Sucks, But</strike> It's Getting Better
 
@@ -32,6 +35,8 @@ There is a ton of low hanging performance fruit. Go for it.
 1. <strike>Test document deletion and observe performance.</strike> (Performance sucks)
 1. Multi-directory writing and merging.
 1. Multi-directory merging (without IO penalty).
+1. If you use a caching `IO` for searches reads, there needs to be a way of evicting data from the cache. Probably a
+   size limit with a last-accessed wins algorithm. 
 
 ## So Then...
 
