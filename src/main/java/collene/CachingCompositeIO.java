@@ -32,6 +32,7 @@ import com.google.common.collect.Table;
 
 public class CachingCompositeIO implements IO {
     private final IO io;
+    private final boolean autoFlush;
     
     private final Table<String, Long, byte[]> cache = HashBasedTable.create();
     private final SetMultimap<String, Long> needsFlush = Multimaps.newSetMultimap(
@@ -45,13 +46,21 @@ public class CachingCompositeIO implements IO {
     );
     
     public CachingCompositeIO(IO io) {
+        this(io, false);
+    }
+    
+    public CachingCompositeIO(IO io, boolean autoFlush) {
         this.io = io;
+        this.autoFlush = autoFlush;
     }
 
     @Override
     public void put(String key, long col, byte[] value) throws IOException {
         needsFlush.put(key, col);
         cache.put(key, col, value);
+        if (autoFlush) {
+            this.flush(false);
+        }
     }
 
     @Override
@@ -103,11 +112,11 @@ public class CachingCompositeIO implements IO {
 
     @Override
     public boolean hasKey(String key) throws IOException {
-        if (cache.contains(key, 0))
+        if (cache.contains(key, 0L))
             return true;
         else {
-            get(key, 0);
-            return cache.contains(key, 0);
+            get(key, 0L);
+            return cache.contains(key, 0L);
         }
     }
     

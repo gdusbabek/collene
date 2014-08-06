@@ -52,6 +52,11 @@ public class TestIO {
                 io.put(Integer.toHexString(r), (long)c, data[r][c]);
             }
         }
+        
+        // caching IOs need to be flushed in order to see writes.
+        if (io instanceof CachingCompositeIO) {
+            ((CachingCompositeIO) io).flush(true);
+        }
     }
     
     @Test
@@ -202,26 +207,32 @@ public class TestIO {
         
         CassandraIO parentIO = new CassandraIO("dummy", 32, "collene", "cindex").session(cassandra.session);
         
-        list.add(new Object[]{
-                new MemoryIO(8192)
-        });
-        list.add(new Object[]{
-                new MemoryIO(4096)
-        });
-        // run the same test multiple times with the same cassandra database, keyspace and column family. Only change
-        // the prefix. All data should still reside on the database at the end, but should be properly namespaced to
-        // avoid collisions.
-        list.add(new Object[]{
-                parentIO.clone(NextCassandraPrefix.get())
-        });
-        list.add(new Object[]{
-                parentIO.clone(NextCassandraPrefix.get())
-        });
-        list.add(new Object[]{
-                parentIO.clone(NextCassandraPrefix.get())
-        });
+        IO[] ios = new IO[]{
+                new MemoryIO(8192),
+                new MemoryIO(4096),
+                new SplitRowIO(256, ",", new MemoryIO(1024)),
+                new CachingCompositeIO(new MemoryIO(1024)),
+                
+                // note that we turn autoflush on for this CCIO instance. It's required, else no puts are recorded in
+                // the backing IO.
+                new SplitRowIO(256, ",", new CachingCompositeIO(new MemoryIO(1024), true)),
+                new CachingCompositeIO(new SplitRowIO(256, ",", new MemoryIO(1024))),
+                
+                // run the same test multiple times with the same cassandra database, keyspace and column family. Only change
+                // the prefix. All data should still reside on the database at the end, but should be properly namespaced to
+                // avoid collisions.
+                parentIO.clone(NextCassandraPrefix.get()),
+                parentIO.clone(NextCassandraPrefix.get()),
+                parentIO.clone(NextCassandraPrefix.get()),
+                
+                // mix things up.
+                new SplitRowIO(256, ",", parentIO.clone(NextCassandraPrefix.get())),
+                new CachingCompositeIO(parentIO.clone(NextCassandraPrefix.get())),
+        };
         
-        // todo: Need to test SplitRowIO and CachingCompositeIO.
+        for (IO io : ios) {
+            list.add(new Object[]{ io });
+        }
         
         return list;
     }
