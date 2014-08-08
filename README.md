@@ -33,7 +33,7 @@ There is a ton of low hanging performance fruit. Go for it.
 ## TODOs and Bugs That I Know About
 
 1. <strike>Test document deletion and observe performance.</strike> (Performance sucks)
-1. Multi-directory writing and merging.
+1. <strike>Multi-directory writing and merging.</strike> (Performance also sucks, but I can fix this)
 1. Multi-directory merging (without IO penalty).
 1. If you use a caching `IO` for searches reads, there needs to be a way of evicting data from the cache. Probably a
    size limit with a last-accessed wins algorithm. 
