@@ -19,8 +19,18 @@ package collene;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 
 public class Utils {
+    
+    private static char[] chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".toCharArray();
+    
+    private static final ThreadLocal<Random> random = new ThreadLocal<Random>() {
+        @Override
+        protected Random initialValue() {
+            return new Random(System.nanoTime());
+        }
+    };
     
     public static long bytesToLong(byte[] buf) {
         return (((long)buf[0] << 56) +
@@ -52,5 +62,13 @@ public class Utils {
             list.add(t);
         }
         return list;
+    }
+    
+    public static String randomString(int length) {
+        char[] ch = new char[length];
+        for (int i = 0; i < length; i++) {
+            ch[i] = chars[random.get().nextInt(chars.length)];
+        }
+        return new String(ch);
     }
 }

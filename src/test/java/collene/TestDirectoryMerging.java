@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 
 @RunWith(Parameterized.class)
@@ -47,7 +48,7 @@ public class TestDirectoryMerging {
         }
     }};
     
-    // todo: a bucket of directories that need to be cleaned up.
+    private static List<File> directoriesToCleanup = new ArrayList<File>();
     
     private static final Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_4_9);
     
@@ -74,18 +75,36 @@ public class TestDirectoryMerging {
             }
         }
         
-        IndexWriter writer = makeWriter(d0, null);
-        writer.addIndexes(d1, d2);
-        writer.close(true);
-        
-        
         // now do a search, see if everything is there.
         IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(d0));
         QueryParser parser = new QueryParser(Version.LUCENE_4_9, "mod2", analyzer);
         
-        // should give us 150 hits.
+        // should give us 50 hits.
         Query query = parser.parse("0");
         TopDocs docs = searcher.search(query, 300);
+        Assert.assertEquals(50, docs.totalHits);
+        
+        IndexWriter writer = makeWriter(d0, null);
+        writer.addIndexes(d1, d2);
+        
+        System.out.println("Files for dir post merge " + d0.toString());
+        for (String f : d0.listAll()) {
+            System.out.println(" " + f);
+        }
+        
+        writer.close(true);
+        
+        System.out.println("Files for dir post close " + d0.toString());
+        for (String f : d0.listAll()) {
+            System.out.println(" " + f);
+        }
+        
+        // now do a search, see if everything is there.
+        searcher = new IndexSearcher(DirectoryReader.open(d0));
+        
+        // should give us 150 hits.
+        query = parser.parse("0");
+        docs = searcher.search(query, 300);
         Assert.assertEquals(150, docs.totalHits);
     } 
     
@@ -96,6 +115,15 @@ public class TestDirectoryMerging {
         // uses hector. let's not do this.
         //EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
         TestUtil.removeDirOnExit(new File("/tmp/collene"));
+        for (File dir : directoriesToCleanup) {
+            TestUtil.removeDirOnExit(dir);
+        }
+    }
+    
+    private static File newTestThatWillBeDeleted() {
+        File dir = TestUtil.getRandomTempDir();
+        directoriesToCleanup.add(dir);
+        return dir;
     }
     
     private static IndexWriter makeWriter(Directory dir, PrintStream out) throws Exception {
@@ -126,19 +154,41 @@ public class TestDirectoryMerging {
     @Parameterized.Parameters
     public static Collection<Object[]> data() throws Exception {
         Collection<Object[]> list = new ArrayList<Object[]>();
+        Object[] cassColDirectory;
         
+        // test using standard file-based lucene.
         Object[] fsDirectory = new Object[]{ 
-                FSDirectory.open(TestUtil.getRandomTempDir()), 
-                FSDirectory.open(TestUtil.getRandomTempDir()), 
-                FSDirectory.open(TestUtil.getRandomTempDir()) 
+                FSDirectory.open(newTestThatWillBeDeleted()), 
+                FSDirectory.open(newTestThatWillBeDeleted()), 
+                FSDirectory.open(newTestThatWillBeDeleted()) 
         };
         list.add(fsDirectory);
         
+        // test using cassandra IO (non translating)
         CassandraIO baseCassandraIO = new CassandraIO(NextCassandraPrefix.get(), 8192, "collene", "cindex").session(cassandra.session);
-        Object[] cassColDirectory = new Object[] {
+        cassColDirectory = new Object[] {
                 ColDirectory.open(NextCassandraPrefix.get(), baseCassandraIO.clone(NextCassandraPrefix.get()), baseCassandraIO.clone(NextCassandraPrefix.get())),
                 ColDirectory.open(NextCassandraPrefix.get(), baseCassandraIO.clone(NextCassandraPrefix.get()), baseCassandraIO.clone(NextCassandraPrefix.get())),
                 ColDirectory.open(NextCassandraPrefix.get(), baseCassandraIO.clone(NextCassandraPrefix.get()), baseCassandraIO.clone(NextCassandraPrefix.get()))
+        };
+        list.add(cassColDirectory);
+        
+        // testing using translate IO in memory (verifies algorithms)
+        MemoryIO undermem = new MemoryIO(8192);
+        cassColDirectory = new Object[] {
+                ColDirectory.open(NextCassandraPrefix.get(), new TranslateIO(new SimpleTranslate(new MemoryIO(32)), undermem), new MemoryIO(8192)),
+                ColDirectory.open(NextCassandraPrefix.get(), new TranslateIO(new SimpleTranslate(new MemoryIO(32)), undermem), new MemoryIO(8192)),
+                ColDirectory.open(NextCassandraPrefix.get(), new TranslateIO(new SimpleTranslate(new MemoryIO(32)), undermem), new MemoryIO(8192))
+        };
+        list.add(cassColDirectory);
+        
+        // test using cassandra IO with translation (kit+caboodle).
+        CassandraIO translateBase = new CassandraIO(NextCassandraPrefix.get(), 32, "collene", "cindex").session(cassandra.session);
+        CassandraIO cassandraUnder = baseCassandraIO.clone(NextCassandraPrefix.get());
+        cassColDirectory = new Object[] {
+                ColDirectory.open(NextCassandraPrefix.get(), new TranslateIO(new SimpleTranslate(translateBase.clone(NextCassandraPrefix.get())), cassandraUnder), baseCassandraIO.clone(NextCassandraPrefix.get())),
+                ColDirectory.open(NextCassandraPrefix.get(), new TranslateIO(new SimpleTranslate(translateBase.clone(NextCassandraPrefix.get())), cassandraUnder), baseCassandraIO.clone(NextCassandraPrefix.get())),
+                ColDirectory.open(NextCassandraPrefix.get(), new TranslateIO(new SimpleTranslate(translateBase.clone(NextCassandraPrefix.get())), cassandraUnder), baseCassandraIO.clone(NextCassandraPrefix.get()))
         };
         list.add(cassColDirectory);
         

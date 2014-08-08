@@ -139,4 +139,55 @@ public class ColDirectory extends Directory {
     public String toString() {
         return name + " " + super.toString();
     }
+
+    /**
+     * We override this in order to attempt a fast copy (changing a database pointer). Otherwise, we do a slow copy.
+     */
+    @Override
+    public void copy(Directory to, String src, String dest, IOContext context) throws IOException {
+        if (canFastCopy(this, to)) {
+            fastCopy(to, src, dest, context);
+        } else {
+            super.copy(to, src, dest, context);
+        }
+    }
+
+    /**
+     * In general, we can do a fast copy if both directories are instances of ColDirectory and use a TranslateIO to
+     * store the index.
+     */
+    private boolean canFastCopy(Directory from, Directory to) {
+        if (!(from instanceof ColDirectory))
+            return false;
+        if (!(to instanceof ColDirectory))
+            return false;
+        ColDirectory cfrom = (ColDirectory)from;
+        if (!(cfrom.indexIO instanceof TranslateIO))
+            return false;
+        ColDirectory cto = (ColDirectory)to;
+        if (!(cto.indexIO instanceof TranslateIO))
+            return false;
+        if (!TranslateIO.canLink(cto.indexIO, cfrom.indexIO))
+            return false;
+        
+        // you made it.
+        return true;
+    }
+    
+    // do the fast copy.
+    private void fastCopy(Directory to, String src, String dest, IOContext context) throws IOException {
+        ColDirectory cto = (ColDirectory)to;
+        ColDirectory cfrom = this;
+        
+        TranslateIO fromIO = (TranslateIO)cfrom.indexIO;
+        TranslateIO toIO = (TranslateIO)cto.indexIO;
+        
+        //System.out.println(String.format("copying %s->%s by linking %s->%s", src, dest, dest, fromIO.translate(src)));
+        
+        // link the file names
+        toIO.link(dest, fromIO.translate(src));
+        
+        // also set the length (so the file can be discovered later)
+        cto.meta.setLength(dest, cfrom.meta.getLength(src), true);
+    }
 }
