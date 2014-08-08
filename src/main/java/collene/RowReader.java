@@ -16,6 +16,8 @@
 
 package collene;
 
+import collene.cache.CachingIO;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;

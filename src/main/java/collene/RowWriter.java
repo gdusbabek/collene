@@ -16,6 +16,8 @@
 
 package collene;
 
+import collene.cache.CachingIO;
+
 import java.io.IOError;
 import java.io.IOException;
 

@@ -1,5 +1,6 @@
 package collene;
 
+import collene.cache.CachingIO;
 import com.google.common.collect.Sets;
 import org.cassandraunit.CassandraCQLUnit;
 import org.cassandraunit.dataset.cql.ClassPathCQLDataSet;
