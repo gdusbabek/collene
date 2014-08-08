@@ -19,6 +19,7 @@ package collene.cache;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
@@ -35,6 +36,12 @@ import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
 
 public class CachingIO implements IO {
+    // here's the deal. we never cancel the timer. Normally this isn't a problem because they should live as long
+    // as the process. During tests this is different. We create a lot of these and they stick around forever.
+    // todo: a better fix would be to use soft references to the timer.
+    private static final int MAX_EVICTORS = System.getProperty("MAX_EVICTORS") == null ? 512 : Integer.parseInt(System.getProperty("MAX_EVICTORS"));
+    private static final List<Timer> ALL_EVICTORS = new ArrayList<Timer>(MAX_EVICTORS);
+    
     private static final AtomicInteger NAMER = new AtomicInteger(0);
     
     private final IO io;
@@ -51,7 +58,7 @@ public class CachingIO implements IO {
                 }
             }
     );
-    private Timer evictTimer = new Timer(String.format("CachingIO-eviction-%d", NAMER.getAndIncrement()), false);
+    private final Timer evictTimer = nextTimer();
     
     public CachingIO(IO io) {
         this(io, false);
@@ -65,6 +72,7 @@ public class CachingIO implements IO {
         this.io = io;
         this.autoFlush = autoFlush;
         this.evictionStrategy = evictionStrategy;
+        
         evictTimer.schedule(new TimerTask() {
             @Override
             public void run() {
@@ -76,6 +84,7 @@ public class CachingIO implements IO {
             }
         },
         10000, 10000);
+        evictTimer.cancel();
     }
 
     @Override
@@ -215,5 +224,14 @@ public class CachingIO implements IO {
                 }
             }
         }
+    }
+    
+    private static Timer nextTimer() {
+        while (ALL_EVICTORS.size() > MAX_EVICTORS) {
+                    ALL_EVICTORS.remove(0).cancel();
+                }
+        Timer evictTimer = new Timer(String.format("CachingIO-eviction-%d", NAMER.getAndIncrement()), false);
+        ALL_EVICTORS.add(evictTimer);
+        return evictTimer;
     }
 }
