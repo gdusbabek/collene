@@ -23,6 +23,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.Lock;
 import org.apache.lucene.store.LockFactory;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collection;
 
@@ -111,7 +112,17 @@ public class ColDirectory extends Directory {
 
     @Override
     public IndexInput openInput(String name, IOContext context) throws IOException {
-        return new RowIndexInput(name, new RowReader(name, indexIO, meta));
+        IndexInput input = new RowIndexInput(name, new RowReader(name, indexIO, meta));
+        
+        // we cannot read a file that does not exist. Lucene relies on the fact that this method will throw an exception
+        // when a file is not present.
+        try {
+            input.length();
+        } catch (NullPointerException ex) {
+            throw new FileNotFoundException(name + " does not exist");
+        }
+        
+        return input;
     }
 
     @Override
