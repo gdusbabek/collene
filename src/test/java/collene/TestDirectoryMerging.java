@@ -1,5 +1,6 @@
 package collene;
 
+import com.google.common.collect.Sets;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -27,12 +28,15 @@ import java.io.File;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 
 @RunWith(Parameterized.class)
 public class TestDirectoryMerging {
     
+    private static final boolean strictFileChecking = System.getenv().containsKey("STRICT_FILE_CHECKING") && Boolean.parseBoolean(System.getenv("STRICT_FILE_CHECKING"));
     private static final boolean isTravis = System.getenv().containsKey("TRAVIS") && System.getenv().get("TRAVIS").equals("true");
         
     // chances are that I'm breaking rules trying to create a static CassandraCQLUnit instance. But this is how I got
@@ -46,6 +50,21 @@ public class TestDirectoryMerging {
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
+    }};
+    
+    private static final Set<String> expectedFileNames = new HashSet<String>() {{
+        add("_0.cfe");
+        add("_0.cfs");
+        add("_0.si");
+        add("_1.cfe");
+        add("_1.cfs");
+        add("_1.si");
+        add("_2.cfe");
+        add("_2.cfs");
+        add("_2.si");
+        add("segments.gen");
+        add("segments_2");
+        add("write.lock");
     }};
     
     private static List<File> directoriesToCleanup = new ArrayList<File>();
@@ -94,9 +113,18 @@ public class TestDirectoryMerging {
         
         writer.close(true);
         
+        Set<String> filesPostClose = new HashSet<String>();
         System.out.println("Files for dir post close " + d0.toString());
         for (String f : d0.listAll()) {
+            filesPostClose.add(f);
             System.out.println(" " + f);
+        }
+        
+        
+        if (strictFileChecking) {
+            System.out.println("Strict file checking...");
+            Assert.assertTrue(Sets.union(filesPostClose, expectedFileNames).equals(filesPostClose));
+            Assert.assertTrue(Sets.union(filesPostClose, expectedFileNames).equals(expectedFileNames));
         }
         
         // now do a search, see if everything is there.
