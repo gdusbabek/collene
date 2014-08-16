@@ -4,8 +4,7 @@ jdk:
   - openjdk7
 
 env:
-  - TRAVIS=true
-  - STRICT_FILE_CHECKING=false
+  - TRAVIS=true STRICT_FILE_CHECKING=false
 
 services:
   - cassandra
