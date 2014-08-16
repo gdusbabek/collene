@@ -16,6 +16,8 @@
 
 package collene;
 
+import com.google.common.base.Joiner;
+import com.google.common.collect.Sets;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -44,9 +46,29 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 @RunWith(Parameterized.class)
 public class TestIndexing {
+
+    private static final boolean strictFileChecking = System.getenv().containsKey("STRICT_FILE_CHECKING") && Boolean.parseBoolean(System.getenv("STRICT_FILE_CHECKING"));
+    private static final Set<String> expectedFiles = new HashSet<String>(){{
+        add("_5j.fdt");
+        add("_5j.fdx");
+        add("_5j.fnm");
+        add("_5j.nvd");
+        add("_5j.nvm");
+        add("_5j.si");
+        add("_5j_1.del");
+        add("_5j_Lucene41_0.doc");
+        add("_5j_Lucene41_0.pos");
+        add("_5j_Lucene41_0.tim");
+        add("_5j_Lucene41_0.tip");
+        add("segments.gen");
+        add("segments_2t");
+        add("write.lock");
+    }};
     
     private static File fsIndexDir = TestUtil.getRandomTempDir();
     
@@ -165,6 +187,20 @@ public class TestIndexing {
         
         reader.close();
         writer.close();
+        
+        // list files
+        Set<String> files = new HashSet<String>();
+        System.out.println("Listing files for " + directory.toString());
+        for (String file : directory.listAll()) {
+            files.add(file);
+            System.out.println(" " + file);
+        }
+        
+        if (strictFileChecking) {
+            System.out.println("String file checking...");
+            Sets.SetView<String> difference = Sets.difference(expectedFiles, files);
+            Assert.assertEquals(Joiner.on(",").join(difference), 0, difference.size());
+        }
         
         reader = DirectoryReader.open(directory);
         searcher = new IndexSearcher(reader);
