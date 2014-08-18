@@ -29,6 +29,7 @@ import java.util.Collection;
 
 public class ColDirectory extends Directory {
     private final String name;
+    private boolean allowFastCopy = true;
     private LockFactory lockFactory;
     private IO indexIO;
     private RowMeta meta;
@@ -50,6 +51,11 @@ public class ColDirectory extends Directory {
 
     public static ColDirectory open(String name, IO indexIO, IO metaIO) {
         return new ColDirectory(name, indexIO, new RowMeta(metaIO), new IoLockFactory(indexIO));    
+    }
+    
+    public ColDirectory withFastCopy(boolean b) {
+        allowFastCopy = b;
+        return this;
     }
     
     /**
@@ -167,6 +173,8 @@ public class ColDirectory extends Directory {
         ColDirectory cto = (ColDirectory)to;
         if (!(cto.indexIO instanceof TranslateIO))
             return false;
+        if (!cfrom.allowFastCopy || !cto.allowFastCopy)
+            return false;
         if (!TranslateIO.canLink(cto.indexIO, cfrom.indexIO))
             return false;
         
@@ -189,5 +197,8 @@ public class ColDirectory extends Directory {
         
         // also set the length (so the file can be discovered later)
         cto.meta.setLength(dest, cfrom.meta.getLength(src), true);
+        
+        // and remove from the src.
+        cfrom.meta.delete(src);
     }
 }

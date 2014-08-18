@@ -33,11 +33,11 @@ import java.util.Set;
  */
 public class RowMeta {
     private static final long ROW_LENGTH_COL = 0;
-    private static final String ROW_PREFIX = "__COLLENE_META_ROW_PREFIX__";
+    public static final String ROW_PREFIX = "__COLLENE_META_ROW_PREFIX__";
     
     // special row key used to store all keys. todo: obvious consistency problems. I think we mostly get around this in
     // lucene by knowing that a particular Directory instnace only operates on a subset of the keys.
-    private static final String KEY_LIST_KEY = "__COLLENE_KEY_LIST_KEY__";
+    public static final String KEY_LIST_KEY = "__COLLENE_KEY_LIST_KEY__";
 
     private static final ThreadLocal<CharsetDecoder> decoders = new ThreadLocal<CharsetDecoder>() {
         @Override
@@ -76,7 +76,11 @@ public class RowMeta {
         if (commit) {
             byte[] buf = Utils.longToBytes(length);
             assert buf.length == 8;
-            io.put(prefix(key), ROW_LENGTH_COL, buf);
+            String prefixKey = prefix(key);
+            // store the length.
+            io.put(prefixKey, ROW_LENGTH_COL, buf);
+            // ensure we have a record so we know this file exists.
+            io.put(fileNamesListKey, prefixKey.hashCode(), prefixKey.getBytes(Charsets.UTF_8));
         } else {
             synchronized (dirty) {
                 dirty.add(key);
