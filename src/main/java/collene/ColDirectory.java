@@ -46,11 +46,12 @@ public class ColDirectory extends Directory {
         this.lockFactory = lockFactory;
         
         // link the lock factory to this directory instance.
-        lockFactory.setLockPrefix(name);
+        lockFactory.setLockPrefix(null);
     }
 
     public static ColDirectory open(String name, IO indexIO, IO metaIO) {
-        return new ColDirectory(name, indexIO, new RowMeta(metaIO), new IoLockFactory(indexIO));    
+        RowMeta rowMeta = new RowMeta(metaIO);
+        return new ColDirectory(name, indexIO, rowMeta, new IoLockFactory(indexIO, rowMeta));    
     }
     
     public ColDirectory withFastCopy(boolean b) {

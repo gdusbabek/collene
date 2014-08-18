@@ -191,7 +191,7 @@ public class TestDirectoryMerging {
                 FSDirectory.open(newTestThatWillBeDeleted()), 
                 FSDirectory.open(newTestThatWillBeDeleted()) 
         };
-        //list.add(fsDirectory);
+        list.add(fsDirectory);
         
         // 1 test using cassandra IO (non translating)
         CassandraIO baseCassandraIO = new CassandraIO(NextCassandraPrefix.get(), 8192, "collene", "cindex").session(cassandra.session);
@@ -200,7 +200,7 @@ public class TestDirectoryMerging {
                 ColDirectory.open(NextCassandraPrefix.get(), baseCassandraIO.clone(NextCassandraPrefix.get()), baseCassandraIO.clone(NextCassandraPrefix.get())),
                 ColDirectory.open(NextCassandraPrefix.get(), baseCassandraIO.clone(NextCassandraPrefix.get()), baseCassandraIO.clone(NextCassandraPrefix.get()))
         };
-        //list.add(cassColDirectory);
+        list.add(cassColDirectory);
         
         // 2 testing using translate IO in memory (verifies algorithms)
         MemoryIO undermem = new MemoryIO(8192);
@@ -221,7 +221,7 @@ public class TestDirectoryMerging {
                 ColDirectory.open(NextCassandraPrefix.get(), new TranslateIO(new SimpleTranslate(translateBase.clone(NextCassandraPrefix.get())), cassandraUnder), baseCassandraIO.clone(NextCassandraPrefix.get())).withFastCopy(false),
                 ColDirectory.open(NextCassandraPrefix.get(), new TranslateIO(new SimpleTranslate(translateBase.clone(NextCassandraPrefix.get())), cassandraUnder), baseCassandraIO.clone(NextCassandraPrefix.get())).withFastCopy(false)
         };
-        //list.add(cassColDirectory);
+        list.add(cassColDirectory);
         
         // 4 try with fast copy.
         cassColDirectory = new Object[] {
@@ -229,7 +229,7 @@ public class TestDirectoryMerging {
                 ColDirectory.open(NextCassandraPrefix.get(), new TranslateIO(new SimpleTranslate(translateBase.clone(NextCassandraPrefix.get())), cassandraUnder), baseCassandraIO.clone(NextCassandraPrefix.get())),
                 ColDirectory.open(NextCassandraPrefix.get(), new TranslateIO(new SimpleTranslate(translateBase.clone(NextCassandraPrefix.get())), cassandraUnder), baseCassandraIO.clone(NextCassandraPrefix.get()))
         };
-        //list.add(cassColDirectory);
+        list.add(cassColDirectory);
         
         return list;
     }

@@ -1,41 +1,29 @@
-/**
- * Copyright 2014 Gary Dusbabek
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package collene;
 
 import org.apache.lucene.store.Lock;
 import org.apache.lucene.store.LockFactory;
 
 import java.io.IOException;
+import java.util.Random;
 
 public class IoLockFactory extends LockFactory {
-    private static final String LOCK_PREFIX = "__COLLENE_LOCK_FACTORY_PREFIX__";
-    private static final long LOCK_COL = 0;
-    private static final byte LOCKED = 1;
+    private static final Random rand = new Random(System.nanoTime());
     private static final byte UNLOCKED = 0;
-    private final IO io;
+    private static final byte TRYING = 1;
     
-    IoLockFactory(IO io) {
+    private final IO io;
+    private final RowMeta rowMeta;
+    
+    public IoLockFactory(IO io, RowMeta rowMeta) {
         this.io = io;
+        this.rowMeta = rowMeta;
     }
 
     @Override
-    public Lock makeLock(String lockName) {
-        String realName = String.format("%s.%s.%s", LOCK_PREFIX, getLockPrefix(), lockName);
-        return new IoLock(realName);
+    public synchronized Lock makeLock(String lockName) {
+        if (lockPrefix != null)
+            lockName = lockPrefix + "-" + lockName;
+        return new IOLock(lockName);
     }
 
     @Override
@@ -43,35 +31,91 @@ public class IoLockFactory extends LockFactory {
         makeLock(lockName).close();
     }
     
-    private class IoLock extends Lock {
-        private final String fullName;
+    private class IOLock extends Lock {
+        private final String path;
+        private Object lock;
+        // signature also is the tiebreaker.
+        private final byte[] signature = new byte[] {
+                2,
+                (byte)rand.nextInt(),
+                (byte)rand.nextInt(),
+                (byte)rand.nextInt(),
+                (byte)rand.nextInt(),
+                (byte)rand.nextInt(),
+                (byte)rand.nextInt(),
+                (byte)rand.nextInt()
+        };
+        private long longSignature = Utils.bytesToLong(signature);
         
-        private IoLock(String fullName) {
-            this.fullName = fullName;
+        public IOLock(String path) {
+            this.path = path;    
         }
         
         @Override
-        public boolean obtain() throws IOException {
-            byte[] buf = io.get(fullName, LOCK_COL);
+        public synchronized boolean obtain() throws IOException {
+            // see if you already own this lock.
+            if (lock != null)
+                return true; 
+            
+            // get the contents.
+            byte[] buf = io.get(path, 0);
             byte status = buf == null ? UNLOCKED : buf[0];
-            if (status != LOCKED) {
-                io.put(fullName, LOCK_COL, new byte[] {LOCKED});
+            
+            if (status == UNLOCKED) {
+                return tryLock();
+            } else {
+                // is locked or someone else is already trying.
+                return false;
             }
-            return status != LOCKED;
         }
+        
+        // still prone to races but will yeild a clear winner most of the time.
+        private boolean tryLock() throws IOException {
+            // indicate locked.
+            io.put(path, 0, new byte[]{TRYING});
+            // cast your lot.
+            io.put(path, longSignature, signature);
+            // wait a second.
+            try { Thread.currentThread().sleep(1000); } catch (Exception ex) {};
+            
+            long max = Long.MIN_VALUE;
+            for (byte[] buf : io.allValues(path)) {
+                if (buf.length == 8) {
+                    long value = Utils.bytesToLong(buf);
+                    max = Math.max(max, value);
+                }
+            }
+            
+            if (max == longSignature) {
+                // I win.
+                lock = signature;
+                rowMeta.setLength(path, 0, true);
+                return true;
+            } else {
+                // remove your lot.
+                io.delete(path, longSignature);
+                return false;
+            }
+        }
+
 
         @Override
         public void close() throws IOException {
-            io.put(fullName, LOCK_COL, new byte[] {UNLOCKED});
+            io.delete(path, longSignature);
+            if (lock != null) {
+                io.delete(path, 0);
+            }
         }
 
         @Override
         public boolean isLocked() throws IOException {
-            return io.get(fullName, LOCK_COL)[0] == 1;
+            //if (lock != null) return true;
+            byte[] buf = io.get(path, 0);
+            return buf != null && buf[0] != UNLOCKED;
         }
         
         public String toString() {
-            return "IOLock:" + fullName;
+            return "IOLock:" + path;
         }
     }
 }
