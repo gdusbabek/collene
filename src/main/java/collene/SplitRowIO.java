@@ -18,9 +18,7 @@ package collene;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class SplitRowIO implements IO {
     private final IO io;
@@ -35,12 +33,12 @@ public class SplitRowIO implements IO {
     
     @Override
     public void put(String key, long col, byte[] value) throws IOException {
-        io.put(dbKey(key, col), col, value);
+        io.put(dbKey(key, col % splits), col, value);
     }
 
     @Override
     public byte[] get(String key, long col) throws IOException {
-        return io.get(dbKey(key, col), col);
+        return io.get(dbKey(key, col % splits), col);
     }
 
     @Override
@@ -51,7 +49,7 @@ public class SplitRowIO implements IO {
     @Override
     public void delete(String key) throws IOException {
         for (long mod = 0; mod < splits; mod++) {
-            io.delete(dbKey(key, mod));
+            io.delete(String.format("%s%s%d", key, delimiter, mod));
         }
     }
 
@@ -60,13 +58,16 @@ public class SplitRowIO implements IO {
         List<byte[]> list = new ArrayList<byte[]>();
         for (long mod = 0; mod < splits; mod++) {
             list.addAll(Utils.asCollection(io.allValues(dbKey(key, mod))));
+            if (mod != 0) {
+                list.addAll(Utils.asCollection(io.allValues(dbKey(key, -mod))));
+            }
         }
         return list;
     }
 
     @Override
     public void delete(String key, long col) throws IOException {
-        io.delete(dbKey(key, col), col);
+        io.delete(dbKey(key, col % splits), col);
     }
 
     @Override
@@ -79,7 +80,7 @@ public class SplitRowIO implements IO {
         return false;
     }
     
-    private String dbKey(String key, long col) {
-        return String.format("%s%s%d", key, delimiter, col % splits);
+    private String dbKey(String key, long mod) {
+        return String.format("%s%s%d", key, delimiter, mod);
     }
 }

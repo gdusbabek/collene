@@ -95,12 +95,18 @@ public class TestIndexing {
         
         System.out.println("Using test dir " + fsIndexDir.getAbsolutePath());
         Object[] fsDirectory = new Object[]{ FSDirectory.open(fsIndexDir) };
-        list.add(fsDirectory);
+        //list.add(fsDirectory);
         
         Object[] memColDirectory = new Object[] { ColDirectory.open(
                 "mem",
                 new MemoryIO(256),
                 new MemoryIO(256)) };
+        list.add(memColDirectory);
+        
+        memColDirectory = new Object[] { ColDirectory.open(
+                "memsplit",
+                new SplitRowIO(20, "/", new MemoryIO(256)),
+                new SplitRowIO(20, "/", new MemoryIO(256))) };
         list.add(memColDirectory);
         
         if (cassandra.session == null) {
