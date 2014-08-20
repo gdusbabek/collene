@@ -16,6 +16,7 @@
 
 package collene;
 
+import collene.cache.CachingIO;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -27,11 +28,28 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collection;
 
+/**
+ * This is where the work is done. ColDirectory leverages the data access provided by IO implementations to provide
+ * a Lucene compatible API experience.
+ */
 public class ColDirectory extends Directory {
+    // I'm starting to think that the concept of "name" should be baked in at the IO level and not exposed here. This
+    // already has shaken out in the CassandraIO implementation by using a "rowPrefix". It is essentially a "name" and
+    // is used to namespace an index. For this class, it serves to uniquely identify a lock that must be held in order
+    // to write. (The Lucene semantics do not hold here, as the lock will end up being stored inside the IO 
+    // implementation, and so two ColDirectory instances with the same name but different IO instances could write at
+    // the same time.
     private final String name;
+    
+    // flag for turning fast data copies off and on.
     private boolean allowFastCopy = true;
+    
     private LockFactory lockFactory;
+    
+    // where data gets written to.
     private IO indexIO;
+    
+    // keeps track of "file" meta information.
     private RowMeta meta;
     
     private ColDirectory(String name, IO indexIO, RowMeta meta, LockFactory lockFactory) {
@@ -46,53 +64,71 @@ public class ColDirectory extends Directory {
         this.lockFactory = lockFactory;
         
         // link the lock factory to this directory instance.
+        // setting to null is following a pattern set by org.apache.lucene.store.Directory.
         lockFactory.setLockPrefix(null);
     }
 
+    /**
+     * Open a directory. Data may or may not already be there.
+     * @param name Name of this directory. Has little bearing right now other than lock names.
+     * @param indexIO this is where data will be written to.
+     * @param metaIO this is where row meta information will be written to.
+     * @return A ColDirectory instance, ready to go.
+     */
     public static ColDirectory open(String name, IO indexIO, IO metaIO) {
         RowMeta rowMeta = new RowMeta(metaIO);
         return new ColDirectory(name, indexIO, rowMeta, new IoLockFactory(indexIO, rowMeta));    
     }
-    
+
+    /**
+     * Enable fast copies during directory merges. Keep in mind that the underlying IO implementation must support row
+     * translation (e.g., TranslateIO) for this to work.
+     */
     public ColDirectory withFastCopy(boolean b) {
-        allowFastCopy = b;
+        allowFastCopy = b && indexIO instanceof TranslateIO;
         return this;
     }
     
-    /**
-     * all bits of data associated with this index. Let's make these row keys.
-     */
+    /** all bits of data associated with this index. includes locks, etc. */
     @Override
     public String[] listAll() throws IOException {
         return meta.allKeys();
     }
 
+    /** delete a file */
     @Override
     public void deleteFile(String name) throws IOException {
         indexIO.delete(name);
         meta.delete(name);
     }
 
+    /** @inheritDoc */
     @Override
     public long fileLength(String name) throws IOException {
         return meta.getLength(name);
     }
 
+    /** ensures that all updates are synced to the backing store. */
     @Override
     public void sync(Collection<String> names) throws IOException {
-        // this is a no-op.
+        if (indexIO instanceof CachingIO) {
+            ((CachingIO) indexIO).flush(false);
+        }
     }
 
+    /** @inheritDoc */
     @Override
     public Lock makeLock(String name) {
         return lockFactory.makeLock(name);
     }
 
+    /** @inheritDoc */
     @Override
     public void clearLock(String name) throws IOException {
         lockFactory.clearLock(name);
     }
 
+    /** @inheritDoc */
     @Override
     public void close() throws IOException {
         for (String key : listAll()) {
@@ -100,6 +136,7 @@ public class ColDirectory extends Directory {
         }
     }
 
+    /** @inheritDoc */
     @Override
     public void setLockFactory(LockFactory lockFactory) throws IOException {
         assert lockFactory != null;
@@ -107,16 +144,19 @@ public class ColDirectory extends Directory {
         lockFactory.setLockPrefix(this.getLockID());
     }
 
+    /** @inheritDoc */
     @Override
     public LockFactory getLockFactory() {
         return this.lockFactory;
     }
 
+    /** @inheritDoc */
     @Override
     public IndexOutput createOutput(String name, IOContext context) throws IOException {
         return new RowIndexOutput(name, new RowWriter(name, indexIO, meta));
     }
 
+    /** @inheritDoc */
     @Override
     public IndexInput openInput(String name, IOContext context) throws IOException {
         IndexInput input = new RowIndexInput(name, new RowReader(name, indexIO, meta));
@@ -132,16 +172,19 @@ public class ColDirectory extends Directory {
         return input;
     }
 
+    /** for us, a file exists if it has meta data and its length is >= 0. */
     @Override
     public boolean fileExists(String s) throws IOException {
         return meta.getLength(s) > -1;
     }
 
+    /** @inheritDoc */
     @Override
     public String getLockID() {
         return name;
     }
 
+    /** @inheritDoc */
     @Override
     public String toString() {
         return name + " " + super.toString();
@@ -160,8 +203,9 @@ public class ColDirectory extends Directory {
     }
 
     /**
-     * In general, we can do a fast copy if both directories are instances of ColDirectory and use a TranslateIO to
-     * store the index.
+     * Fast copy works by adding a layer of indirection (rows are not really named what you think they are) simply 
+     * changing the labels on rows to effect a copy. In general, we can do a fast copy if both directories are 
+     * instances of ColDirectory and use a TranslateIO to store the index.
      */
     private boolean canFastCopy(Directory from, Directory to) {
         if (!(from instanceof ColDirectory))
