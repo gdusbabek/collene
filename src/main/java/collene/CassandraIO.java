@@ -37,38 +37,66 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * @see collene.IO 
+ * 
+ * Put and get things in Cassandra. You can use the same column family for multiple indexes by specifying different
+ * rowPrefix values in the constructor.
+ * 
+ * The column family is expected to be compatible with the following CQL:
+ * 
+ * create table if not exists cindex (
+ *   key text,
+ *   name bigint,
+ *   value blob,
+ *   primary key(key, name)
+ * )
+ * with compact storage;
+ */
 public class CassandraIO implements IO {
     private final int columnSize;
     private final String keyspace;
-    private final String index;
+    private final String columnFamily;
     private final String rowPrefix;
     
+    // keeping the cluster around is not too important. However, it is handy for when a session needs to be recreated.
     private Cluster cluster;
     private Session session = null;
-    
-    // no attempt to make consistent. races are entirely possible. deal with it for now.
-    private Set<String> keyCache = new HashSet<>();
-    
-    public CassandraIO(String rowPrefix, int columnSize, String keyspace, String index) {
+
+    /**
+     * Create an IO instance.
+     * @param rowPrefix Prefix added to each key before writing to cassandra. This allows you to use the same column
+     *                  family for multiple indexes.
+     * @param columnSize byte size for each column.
+     * @param keyspace Cassandra keyspace to use
+     * @param columnFamily Cassandra column family to use.
+     */
+    public CassandraIO(String rowPrefix, int columnSize, String keyspace, String columnFamily) {
         this.columnSize = columnSize;
         this.keyspace = keyspace;
-        this.index = index;
+        this.columnFamily = columnFamily;
         this.rowPrefix = rowPrefix;
     }
-    
+
+    /**
+     * Hijack the session and cluster of an existing IO instance to write to a different index.
+     */
     public CassandraIO clone(String newRowPrefix) {
-        CassandraIO io = new CassandraIO(newRowPrefix, columnSize, keyspace, index);
+        CassandraIO io = new CassandraIO(newRowPrefix, columnSize, keyspace, columnFamily);
         io.session = this.session;
         io.cluster = this.cluster;
         return io;
     }
-    
-    // connect to a cluster and build a session.
+
+    /**
+     * connect to a cluster and build a session.
+     * @param addr a host:port tuple
+     * @return this instance.
+     */
     public CassandraIO start(String addr) {
         try {
             cluster = Cluster.builder()
                     .addContactPointsWithPorts(asSocketAddresses(addr))
-//                    .addContactPoint(addr)
                     .build();
             ensureSession();
         } catch (UnknownHostException ex) {
@@ -76,20 +104,24 @@ public class CassandraIO implements IO {
         }
         return this;
     }
-    
-    // use this active session.
+
+    /**
+     * Replaces the session instance of an existing instance.
+     */
     public CassandraIO session(Session session) {
         this.session = session;
         this.cluster = session.getCluster();
         return this;
     }
     
+    // ensures the session is active.
     private void ensureSession() {
         if (session == null || session.isClosed()) {
             session = cluster.connect(keyspace);
         }
     }
     
+    // convert a bunch of host:port tuples to a collection of socket addresses.
     private static Collection<InetSocketAddress> asSocketAddresses(String... hostAndPorts) throws UnknownHostException {
         List<InetSocketAddress> addrs = new ArrayList<InetSocketAddress>(hostAndPorts.length);
         for (String spec : hostAndPorts) {
@@ -99,6 +131,7 @@ public class CassandraIO implements IO {
         return addrs;
     }
     
+    /** close down */
     public void close() {
         ensureSession();
         session.close();
@@ -106,22 +139,24 @@ public class CassandraIO implements IO {
         session = null;
     }
     
+    /** @inheritDoc */
     @Override
     public void put(String key, long col, byte[] value) throws IOException {
         ensureSession();
         String prefixedKey = prefix(key);
         BatchStatement batch = new BatchStatement();
-        PreparedStatement stmt = session.prepare(String.format("insert into %s.%s (key, name, value) values(?, ?, ?);", keyspace, index));
+        PreparedStatement stmt = session.prepare(String.format("insert into %s.%s (key, name, value) values(?, ?, ?);", keyspace, columnFamily));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
         batch.add(bndStmt.bind(prefixedKey, col, ByteBuffer.wrap(value)));
         session.execute(batch);
     }
 
+    /** @inheritDoc */
     @Override
     public byte[] get(String key, long col) throws IOException {
         ensureSession();
         String prefixedKey = prefix(key);
-        PreparedStatement stmt = session.prepare(String.format("select value from %s.%s where key = ? and name = ?", keyspace, index));
+        PreparedStatement stmt = session.prepare(String.format("select value from %s.%s where key = ? and name = ?", keyspace, columnFamily));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
         ResultSet rs = session.execute(bndStmt.bind(prefixedKey, col));
         Row row = rs.one();
@@ -134,11 +169,12 @@ public class CassandraIO implements IO {
         return b;
     }
 
+    /** @inheritDoc */
     @Override
     public Iterable<byte[]> allValues(String key) throws IOException {
         ensureSession();
         String prefixedKey = prefix(key);
-        PreparedStatement stmt = session.prepare(String.format("select value from %s.%s where key = ?", keyspace, index));
+        PreparedStatement stmt = session.prepare(String.format("select value from %s.%s where key = ?", keyspace, columnFamily));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
         ResultSet rs = session.execute(bndStmt.bind(prefixedKey));
         List<byte[]> values = new ArrayList<byte[]>();
@@ -170,41 +206,51 @@ public class CassandraIO implements IO {
         return bytes;
     }
 
+    /** @inheritDoc */
     @Override
     public int getColSize() {
         return columnSize;
     }
     
+    /** @inheritDoc */
     @Override
     public void delete(String key) throws IOException {
         ensureSession();
         String prefixedKey = prefix(key);
         BatchStatement delBatch = new BatchStatement();
         
-        PreparedStatement stmt = session.prepare(String.format("delete from %s.%s where key = ?", keyspace, index));
+        PreparedStatement stmt = session.prepare(String.format("delete from %s.%s where key = ?", keyspace, columnFamily));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
         delBatch = delBatch.add(bndStmt.bind(prefixedKey));
         
         session.execute(delBatch);
-        
-        keyCache.remove(key);
     }
 
+    /** @inheritDoc */
     @Override
     public void delete(String key, long col) throws IOException {
         ensureSession();
         String prefixedKey = prefix(key);
-        PreparedStatement stmt = session.prepare(String.format("delete from %s.%s where key = ? and name = ?", keyspace, index));
+        PreparedStatement stmt = session.prepare(String.format("delete from %s.%s where key = ? and name = ?", keyspace, columnFamily));
         BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
         session.execute(bndStmt.bind(prefixedKey, col));
     }
 
+    /** @inheritDoc */
     @Override
     public boolean hasKey(String key) throws IOException {
-        // todo: this way vs doing allKeys()?
-        return get(key, 0L) != null;
+        // if performance ends up sucking, let's go back to this:
+        // return get(key, 0L) != null;
+        ensureSession();
+        String prefixedKey = prefix(key);
+        PreparedStatement stmt = session.prepare(String.format("select value from %s.%s where key = ? limit 1", keyspace, columnFamily));
+        BoundStatement bndStmt = new BoundStatement(stmt.setConsistencyLevel(ConsistencyLevel.ONE));
+        ResultSet rs = session.execute(bndStmt.bind(prefixedKey));
+        List<byte[]> values = new ArrayList<byte[]>();
+        return rs.one() != null;
     }
     
+    // prefix a key in the standard way.
     private String prefix(String key) {
         return String.format("%s/%s", rowPrefix, key);
     }

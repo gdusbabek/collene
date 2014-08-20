@@ -10,17 +10,24 @@ However, here are some problems this may get in the general direction of a solut
 1. A fully distributed Lucene index without sharding.
   * Really, this is a better fault-tolerance story than any existing open- or closed-source project that I know about.
 1. The ability to have an Lucene index whose size is greater than what is currently possible using a single machine.
-1. I also hope this exercise will satisfy my hope curiosity of knowing if there is anything better than ElasticSearch
+1. Drop-in library compatibility with Apache Lucene.
+1. I also hope this exercise will satisfy my curiosity of knowing if there is anything better than ElasticSearch
    and Solr.
 
 ## Primary Interfaces
 
 The main implementational interface is `collene.IO`. 
-Implement that to talk to whatever column store you have. Then everything just works.
-I've included a `MemoryIO` implementation in testing (it works), and a `CassandraIO`.
+Implement that to talk to whatever column store you have.
+Then everything else should Just Work™.
 
-The main search interface is `collene.ColDirectory`. Use it where you would normally have used an 
-`org.apache.lucene.index.Directory`.
+I've included a `MemoryIO` implementation in testing (it works), and a `CassandraIO` implementation that talks to
+Cassandra.
+
+Other `*IO` implementations are intended compose basic `IO` implementations to add functionality transparently, e.g.:
+splitting long rows or caching.
+
+The main search class is `collene.ColDirectory`. Use it where you would normally have used an 
+`org.apache.lucene.index.Directory`. 
 
 ## <strike>It Sucks, But</strike> It's Getting Better
 
@@ -32,24 +39,12 @@ There is a ton of low hanging performance fruit. Go for it.
 
 ## TODOs and Bugs That I Know About
 
-1. <strike>Test document deletion and observe performance.</strike> (Performance sucks)
-1. <strike>Multi-directory writing and merging.</strike> (Performance also sucks, but I can fix this)
-1. Multi-directory merging (without IO penalty).
-1. If you use a caching `IO` for searches reads, there needs to be a way of evicting data from the cache. Probably a
-   size limit with a last-accessed wins algorithm. 
+1. I track everything with [Github issues](https://github.com/gdusbabek/collene/issues)
+1. If you use a caching `IO` for searches reads, there needs to be a better way of evicting data from the cache.
+   Probably a size limit with a last-accessed wins algorithm.
+1. Document the code.
 
 ## So Then...
-
-### Things that need to be verified or implemented and then verified
-
-1. <strike>Look at a way to implement `Directory.listAll()`, probably using a long row. (Let's face it, if this grows to
-   millions of entries, you have other problems.) After thinking about it for a bit,</strike> I want to use several long rows
-   and then read from all of them. This is a little way of sharding.
-1. Document retrieval.
-
-### Questions that might help me figure a few things out.
-
-1. When does a doc get its id?. Could I store that in some other place to have quicker document retrieval?
 
 ### Things I haven't thought too deeply about, but may be a problem.
 
