@@ -22,6 +22,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * reads a row (file). Handles caching opaquely.
+ */
 public class RowReader {
     private final String key;
     private final IO io;
@@ -29,10 +32,15 @@ public class RowReader {
     
     public RowReader(String key, IO io, RowMeta meta) {
         this.key = key;
-        this.io = new CachingIO(io);
+        if (io instanceof CachingIO) {
+            this.io = (CachingIO)io;
+        } else {
+            this.io = new CachingIO(io);
+        }
         this.meta = meta;
     }
     
+    /** read a single byte */
     public byte getByte(long pointer) throws IOException {
         long col = columnFor(pointer);
         int offset = offsetFor(pointer);
@@ -44,14 +52,17 @@ public class RowReader {
         }
     }
     
+    // compute the column for a given file offset.
     private long columnFor(long pointer) {
         return pointer / io.getColSize();
     }
     
+    // compute the sub-offset (within a column) for a given file offset 
     private int offsetFor(long pointer) {
         return (int)(pointer % io.getColSize());
     }
     
+    /** read a bunch of bytes */
     public byte[] getBytes(long pointer, int len) throws IOException {
         Map<Long, byte[]> colCache = new HashMap<Long, byte[]>();
         
@@ -59,6 +70,8 @@ public class RowReader {
         byte[] colValue;
         for (int i = 0; i < len; i++) {
             
+            // we are going to do a read per byte, but caching makes that cheap.
+            // TODO: a smarter implementation where we copy whole buffers.
             long column = columnFor(pointer + i);
             if (colCache.containsKey(column)) {
                 colValue = colCache.get(column);
@@ -78,6 +91,7 @@ public class RowReader {
         return buf;
     }
     
+    /** @returns the meta data (for not just this row). this is bad encapsulation, but terribly handy. */
     public RowMeta meta() {
         return meta;
     }
