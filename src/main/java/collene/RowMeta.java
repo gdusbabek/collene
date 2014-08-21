@@ -30,9 +30,17 @@ import java.util.Set;
 
 /**
  * Holds on to file meta information (currently just the length), flushing it when told.
+ * 
+ * How this works.
+ * 1. every file gets its own row. offset 0 holds the length incoded as a 8-byte long.
+ * 2. every file gets a column in the row keyed by KEY_LIST_KEY. This makes it easy to get a list of all the files.
+ *    (I realize the performance implications of this). It's one reason you may wish to use a SplitRowIO for your
+ *    RowMeta instance.
  */
 public class RowMeta {
     private static final long ROW_LENGTH_COL = 0;
+    
+    // every row gets prefixed with this string.
     public static final String ROW_PREFIX = "__COLLENE_META_ROW_PREFIX__";
     
     // special row key used to store all keys. todo: obvious consistency problems. I think we mostly get around this in
@@ -47,15 +55,23 @@ public class RowMeta {
     };
     
     private final IO io;
+    
+    // avoid lookups by using a cache of file lengths.
     private final Map<String, Long> cache = new HashMap<String, Long>();
+    
+    // keep track of "dirty" metadata (mainly when the length of a file is set).
     private final Set<String> dirty = new HashSet<String>();
+    
+    // final key used to keep the long list of file names.
     private final String fileNamesListKey;
     
+    /** create */
     public RowMeta(IO io) {
         this.io = io;
         fileNamesListKey = prefix(KEY_LIST_KEY);
     }
     
+    /** @return the length of a particular file */
     public long getLength(String key) throws IOException {
         if (cache.containsKey(key)) {
             return cache.get(key);
@@ -71,6 +87,7 @@ public class RowMeta {
         }
     }
     
+    /** set the length of a file. set commit if you want that data immediately flushed to the backing store */
     public void setLength(String key, long length, boolean commit) throws IOException {
         cache.put(key, length);
         if (commit) {
@@ -88,6 +105,7 @@ public class RowMeta {
         }
     }
     
+    /** commit all the dirty information to the backing store */
     public void flush(boolean clear) throws IOException {
         Set<String> tempDirty = new HashSet<>(dirty);
         for (String key : tempDirty) {
@@ -106,6 +124,7 @@ public class RowMeta {
         }
     }
     
+    /** remove all meta information for a particular file */
     public void delete(String key) throws IOException {
         String prefixedKey = prefix(key);
         io.delete(prefixedKey);
@@ -121,7 +140,10 @@ public class RowMeta {
         return prefixedKey.split("/", -1)[1];
     }
     
+    /** @return the file names from the long row of file names */
     public String[] allKeys() throws IOException {
+        // this could very well have been done with a "select *" type of query (IO has that), but I think this might
+        // perform better.
         List<String> keys = new ArrayList<String>();
         for (byte[] bb : io.allValues(fileNamesListKey)) {
             // todo: need to benchmark the various approaches here in a concurrent environment.
