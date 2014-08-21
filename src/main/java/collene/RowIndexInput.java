@@ -21,6 +21,9 @@ import org.apache.lucene.store.IndexInput;
 import java.io.IOError;
 import java.io.IOException;
 
+/**
+ * Used to read file data. In a column sense, a file is just a long row of bytes.
+ */
 public class RowIndexInput extends IndexInput {
     private final String key;
     private final RowReader io;
@@ -38,21 +41,25 @@ public class RowIndexInput extends IndexInput {
         this.offset = offset;
     }
 
+    /** @inheritDoc */
     @Override
     public void close() throws IOException {
 
     }
 
+    /** @inheritDoc */
     @Override
     public long getFilePointer() {
         return pointer;
     }
 
+    /** @inheritDoc */
     @Override
     public void seek(long pos) throws IOException {
         pointer = pos;
     }
 
+    /** @inheritDoc */
     @Override
     public long length() {
         try {
@@ -62,6 +69,10 @@ public class RowIndexInput extends IndexInput {
         }
     }
 
+    /**
+     * creates a "slice" of this reader. new pointer goes to zero. offset goes to current pointer + offset.
+     * this is used for reading small bits of a row.
+     */
     @Override
     public IndexInput slice(String sliceDescription, final long offset, final long length) throws IOException {
         if (offset < 0 || length < 0 || offset+length > this.length()) {
@@ -76,6 +87,7 @@ public class RowIndexInput extends IndexInput {
         };
     }
 
+    /** @inheritDoc */
     @Override
     public byte readByte() throws IOException {
         byte b = io.getByte(offset + pointer);
@@ -83,6 +95,7 @@ public class RowIndexInput extends IndexInput {
         return b;
     }
 
+    /** @inheritDoc */
     @Override
     public void readBytes(byte[] b, int offset, int len) throws IOException {
         byte[] buf = io.getBytes(this.offset + pointer, len);
