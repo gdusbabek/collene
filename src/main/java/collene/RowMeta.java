@@ -107,7 +107,12 @@ public class RowMeta {
     
     /** commit all the dirty information to the backing store */
     public void flush(boolean clear) throws IOException {
-        Set<String> tempDirty = new HashSet<>(dirty);
+        Set<String> tempDirty;
+        // todo: I think there is a race here. While we flush, it's possible for new writes to
+        // happen, and they all get removed in the 'clear'.
+        synchronized (dirty) {
+            tempDirty = new HashSet<>(dirty);
+        }
         for (String key : tempDirty) {
             Long v = cache.get(key);
             String prefixedKey = prefix(key);
