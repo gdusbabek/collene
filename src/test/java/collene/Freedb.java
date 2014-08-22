@@ -33,17 +33,20 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.Version;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 public class Freedb {
     
@@ -51,25 +54,33 @@ public class Freedb {
     private static final int BATCH_SIZE = 10;
     private static final boolean VERBOSE = false;
     private static PrintStream out = System.out;
-    private static final String name = "freedb.cass.test";
-    private static final String metaName = name + ".meta";
+    private static final String name = "index_freedb_cass_test";
+    private static final String metaName = "meta_freedb_cass_test";
     
     public static void main(String args[]) throws Exception {
         //dumpGenres(args);
         //System.exit(0);
         
+        if (args.length == 0) {
+            System.out.println("Need to specify: { memory | file | cassandra }");
+            System.exit(-1);
+        }
+        
+        Callable<Directory> directoryBuilder = buildDirectory(args[0]);
+        
         try {
-            BuildIndex(args);
+            BuildIndex(directoryBuilder.call());
         } catch (LockObtainFailedException ex) {
             ex.printStackTrace(out);
             System.exit(-1);
         }
         out.println("\nWill now do an independent search\n");
-        DoSearch(args);
+        DoSearch(directoryBuilder.call());
         out.println("\nWill now do an independent search\n");
-        DoSearch(args);
+        DoSearch(directoryBuilder.call());
         out.println("\nWill now do an independent search\n");
-        DoSearch(args);
+        DoSearch(directoryBuilder.call());
+        
         System.exit(0);
     }
     
@@ -97,13 +108,7 @@ public class Freedb {
         out.close();
     }
     
-    public static void DoSearch(String[] args) throws Exception {
-        CassandraIO baseIO = new CassandraIO(name, 8192, "collene", "cindex").start("127.0.0.1:9042");
-        Directory directory = ColDirectory.open(
-                name,
-                baseIO,
-                baseIO.clone(metaName)
-        );
+    public static void DoSearch(Directory directory) throws Exception {
         
         out.println("I think these are the files:");
         for (String s : directory.listAll()) {
@@ -132,15 +137,48 @@ public class Freedb {
         directory.close();
     }
     
-    public static void BuildIndex(String[] args) throws Exception {
+    private static Callable<Directory> buildDirectory(final String type) throws IOException {
+        return new Callable<Directory>() {
+            
+            private final CassandraIO baseIO = new CassandraIO(name, 8192, "collene", "cindex").start("127.0.0.1:9042");
+            private final File tmpDir = TestUtil.getRandomTempDir();
+            private final MemoryIO dataMemory = new MemoryIO(8192);
+            private final MemoryIO metaMemory = new MemoryIO(256);
+            
+            @Override
+            public Directory call() throws Exception {
+                Directory directory = null;
+                
+                if ("cassandra".equals(type)) {
+                    directory = ColDirectory.open(
+                            name,
+                            baseIO,
+                            baseIO.clone(metaName)
+                    );
+                } else if ("file".equals(type)) {
+                    System.out.println("Building index in " + tmpDir.getAbsolutePath());
+                    directory = FSDirectory.open(tmpDir);
+                } else if ("memory".equals(type)) {
+                    directory = ColDirectory.open(
+                            name,
+                            dataMemory,
+                            metaMemory
+                    );
+                } else {
+                    directory = null;
+                }   
+                return directory;
+            }
+        };
+    }
+    
+    public static void BuildIndex(Directory directory) throws Exception {
         String freedbPath = "/Users/gdusbabek/Downloads/freedb-complete-20140701.tar.bz2";
         
-        CassandraIO baseIO = new CassandraIO(name, 8192, "collene", "cindex").start("127.0.0.1:9042");
-        Directory directory = ColDirectory.open(
-                name,
-                baseIO,
-                baseIO.clone(metaName)
-        );
+        if (directory == null) {
+            System.out.println("Need to specify: { memory | file | cassandra }. Did you misspell something?");
+            System.exit(-1);
+        }
 
         FreeDbReader reader = new FreeDbReader(new File(freedbPath), 50000);
         reader.start();
@@ -151,10 +189,13 @@ public class Freedb {
         IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_4_9, analyzer);
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
         IndexWriter writer = new IndexWriter(directory, config);
+        
+        // stop after this many documents.
+        final int maxDocuments = 400000; //Integer.MAX_VALUE;
 
         FreeDbEntry entry = reader.next();
         int count = 0;
-        while (entry != null) {
+        while (entry != null && count < maxDocuments) {
             Document doc = new Document();
             String any = entry.toString();
             doc.add(new Field("any", any, TextField.TYPE_STORED));
@@ -227,7 +268,7 @@ public class Freedb {
         }
         
         long indexTime = System.currentTimeMillis() - indexStart;
-        out.println(String.format("Indexed %d things in %d ms", count, indexTime));
+        out.println(String.format("Indexed %d things in %d ms (%s)", count, indexTime, directory.toString()));
         
 //        long startMerge = System.currentTimeMillis();
 //        writer.forceMerge(1, true);
@@ -239,5 +280,6 @@ public class Freedb {
         }
         
         writer.close(true);
+        directory.close();
     }
 }

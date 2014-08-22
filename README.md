@@ -39,6 +39,18 @@ Here are the numbers, taken by Running TestShakespeare on my machine with no att
 1. ColDirectory (memory backed): 1.5 seconds to index.
 1. ColDirectory (cassandra backed): 2.3 seconds to index.
 
+I modified the Freedb search application to use different index. Here are the results there.
+
+1. MMapDirectory: Indexed 400k documents in 122s, cold search 2ms, warm search 1ms.
+1. ColDirectory (memory): Indexed 400k documents in 119s, cold search 14ms, warm search 1ms .
+1. ColDirectory (cassandra): Indexed 400k documents in 211s, cold search 64ms, warm search 1ms.
+
+Here are the vectors for improvement:
+
+1. Profile for hotspots in general.
+2. Tune Cassandra
+3. Smarter use the the Cassandra Java Driver.
+
 So room for improvement.
 
 ## <strike>It Sucks, But</strike> It's Getting Better
