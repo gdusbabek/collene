@@ -29,6 +29,18 @@ splitting long rows or caching.
 The main search class is `collene.ColDirectory`. Use it where you would normally have used an 
 `org.apache.lucene.index.Directory`. 
 
+## Performance
+
+I haven't done any pure Apples to Apples testing yet. 
+All I really have is the Shakespeare corpus that ships with this code.
+Here are the numbers, taken by Running TestShakespeare on my machine with no attempt to be scientific or correct:
+
+1. MMapDirectory (files): 1.2 seconds to index.
+1. ColDirectory (memory backed): 1.5 seconds to index.
+1. ColDirectory (cassandra backed): 2.3 seconds to index.
+
+So room for improvement.
+
 ## <strike>It Sucks, But</strike> It's Getting Better
 
 Lucene does a lot of tiny one-byte writes. <strike>This means performance will be poor because chances are that you need to

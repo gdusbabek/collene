@@ -117,6 +117,7 @@ public class TestShakespeare {
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
         IndexWriter writer = new IndexWriter(directory, config);
         
+        long startIndexTime = System.currentTimeMillis();
         final int flushLines = 200;
         int totalLines = 0;
         Collection<Document> documents = new ArrayList<Document>();
@@ -149,6 +150,9 @@ public class TestShakespeare {
         if (documents.size() > 0) {
             writer.addDocuments(documents);
         }
+        long endIndexTime = System.currentTimeMillis();
+        
+        System.out.println(String.format("Index for %s took %d ms", directory.toString(), endIndexTime-startIndexTime));
         
         //System.out.println(String.format("%s committed", directory.getClass().getSimpleName()));
 //        writer.forceMerge(1);
