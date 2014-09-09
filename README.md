@@ -45,6 +45,8 @@ I modified the Freedb search application to use different index. Here are the re
 1. ColDirectory (memory): Indexed 400k documents in 119s, cold search 14ms, warm search 1ms .
 1. ColDirectory (cassandra): Indexed 400k documents in 211s, cold search 64ms, warm search 1ms.
 
+Note: You can get the latest [FreeDb archive](http://ftp.freedb.org/pub/freedb/) and try things yourself. Just modify the paths in `Freedb.java` appropriately.
+
 Here are the vectors for improvement:
 
 1. Profile for hotspots in general.
@@ -77,3 +79,5 @@ There is a ton of low hanging performance fruit. Go for it.
 1. What happens in a partitioned environment?
   * Hypothetically, there could be two writers, which would be bad, very bad.
   * As long as writes are always controlled by a single, same node, we are fine.
+    * The implication of that statement is that each writer should write to a single index (you can have many indexes pointed to a single cassandra database), and a <b>single process</b> in charge of merging them.
+    * I need to write code to make this practice easy.
